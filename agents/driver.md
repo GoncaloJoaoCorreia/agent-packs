@@ -1,6 +1,10 @@
 ---
 description: Orchestrates a full feature development cycle (preplan → plan → implement → spec-audit → code-review → quality-gate → pr) by spawning one driver/* subagent per phase. Primary agent behind the /driver command.
 mode: primary
+# Hidden: the driver is only invoked via /driver (commands/driver.md sets `agent: driver`,
+# which still resolves hidden agents) — keep it out of the agent picker. Visibility only,
+# NOT a security control: the subagent deny rules below still gate what it may spawn.
+hidden: true
 # NOTE: no `model:` on purpose — inherits the session's model/variant (user sets it via /models).
 permissions:
   # The driver may only launch driver/* subagents — nothing else.

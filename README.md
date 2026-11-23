@@ -10,7 +10,9 @@ and one TUI plugin.
 
 It ships the **driver** — `/driver` runs an entire feature cycle for
 you. Each phase runs as its own subagent with a fresh context window, coordinated through a
-state file, so no single conversation ever has to hold the whole cycle — plus
+state file, so no single conversation ever has to hold the whole cycle. The `driver` agent
+itself is declared `hidden: true` (it is only reached via `/driver`, which selects it
+explicitly), so it does not show up in the agent picker — plus
 **driver-viz**, a sidebar plugin that shows the live phase flow chart of the current run
 (see [Driver sidebar](#driver-sidebar-driver-viz)).
 
