@@ -179,7 +179,6 @@ jobs:
         run: |
           set -eu
           tag="${{ steps.tag.outputs.tag }}"
-          latest="${{ steps.version.outputs.latest }}"
           # releases/latest lags the just-created release for a few seconds — the
           # self-test installs via releases/latest, so let the pointer settle first
           sleep 20
@@ -236,16 +235,24 @@ jobs:
           test ! -e "$t/cfg/agents/gone.md"
           test ! -e "$t/cfg/opencode-agents.manifest"
           test ! -e "$t/cfg/opencode-agents.version"
-          # legacy path: the PRE-RENAME install.sh (from the previous tag) must still
-          # work end-to-end via the old repo name (release URLs redirect) + legacy asset
-          if [ "$latest" != "none" ]; then
-            git show "${latest}:install.sh" > "$t/old-install.sh"
+          # legacy path: the last PRE-RENAME install.sh (REPO=opencode-agents, still
+          # served from the old raw URL) must keep working end-to-end via the old repo
+          # name (release URLs redirect) + the legacy opencode-agents.tar.gz asset
+          old_tag=$(git tag -l 'v*' | sort -rV | while read -r tg; do
+            if git show "$tg:install.sh" 2>/dev/null | grep -q 'REPO="GoncaloJoaoCorreia/opencode-agents"'; then
+              printf '%s\n' "$tg"; break
+            fi
+          done)
+          if [ -n "$old_tag" ]; then
+            git show "${old_tag}:install.sh" > "$t/old-install.sh"
             sh "$t/old-install.sh" --release --dest "$t/cfg-old" >/dev/null
             test -f "$t/cfg-old/agents/driver.md"
             test -f "$t/cfg-old/skills/driver-conventions/SKILL.md"
             test -f "$t/cfg-old/agent-scripts/driver-state.py"
             test -f "$t/cfg-old/opencode-agents.manifest"
             test -f "$t/cfg-old/opencode-agents.version"
-            echo "legacy pre-rename installer (tag $latest) still installs from the $tag assets"
+            echo "legacy pre-rename installer (tag $old_tag) still installs from the $tag assets"
+          else
+            echo "note: no pre-rename tag found — skipping legacy installer self-test"
           fi
           echo "self-test OK: release $tag verifies and installs"
