@@ -1,0 +1,13 @@
+{
+  "name": "@agent-packs/vibe-acp",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "OpenCode server plugin: registers Mistral Vibe (ACP) as the 'vibe' provider (models discovered from the vibe-acp CLI) and adds a 'vibe login' command auth method. Auto-discovered when placed in <config>/plugins/vibe-acp/.",
+  "exports": {
+    ".": "./index.ts"
+  },
+  "dependencies": {
+    "@opencode/plugin": "latest"
+  }
+}
