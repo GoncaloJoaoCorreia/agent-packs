@@ -180,6 +180,9 @@ jobs:
           set -eu
           tag="${{ steps.tag.outputs.tag }}"
           latest="${{ steps.version.outputs.latest }}"
+          # releases/latest lags the just-created release for a few seconds — the
+          # self-test installs via releases/latest, so let the pointer settle first
+          sleep 20
           t=$(mktemp -d)
           gh release download "$tag" --dir "$t" --pattern '*.tar.gz' --pattern '*.sha256' --pattern SHA256SUMS
           (cd "$t" && sha256sum -c agent-packs.tar.gz.sha256 && sha256sum -c SHA256SUMS)
