@@ -27,7 +27,7 @@
 #               copy via the manifest cleanup)
 #
 # Release payload: agent-packs.tar.gz with one top-level agent-packs/ dir containing
-# packs/ shared/ install.sh LICENSE. Only the selected packs are installed. Each pack is
+# packs/ install.sh LICENSE. Only the selected packs are installed. Each pack is
 # described by packs/<name>/pack.conf — see packs/README.md for the contract.
 #
 # Per selected pack the installer:
@@ -35,7 +35,7 @@
 #   - copies each PACK_PAYLOAD dir from packs/<name>/ to the dest root (COPY-based on
 #     purpose, cp -RL: OpenCode's discovery does not follow symlinked agent files)
 #   - composes each PACK_COMPOSE entry "src:dst" (src relative to the payload root,
-#     dst relative to the dest root), e.g. shared/agent-scripts:agent-scripts
+#     dst relative to the dest root), e.g. packs/<other-pack>/lib:lib
 #   - strips .agent/ and __pycache__/ from everything installed (OpenCode discovers
 #     agents/**/*.md recursively — an installed .agent/*.md would register as an agent)
 #   - writes <PACK_META_PREFIX>.version + <PACK_META_PREFIX>.manifest into the dest; the
@@ -409,7 +409,7 @@ install_pack() {
     mkdir -p "$dest/$d"
     cp -RL "$ROOT/packs/$pack/$d/." "$dest/$d/"
   done
-  # compose shared dirs into their dest paths
+  # compose PACK_COMPOSE entries into their dest paths
   for e in $comp; do
     src=${e%%:*}; dst=${e#*:}
     mkdir -p "$dest/$dst"

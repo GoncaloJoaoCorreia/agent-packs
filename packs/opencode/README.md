@@ -40,8 +40,8 @@ curl -fsSL https://raw.githubusercontent.com/GoncaloJoaoCorreia/agent-packs/main
 The installer downloads the latest GitHub release payload (`agent-packs.tar.gz`),
 verifies it against the release's `SHA256SUMS`, lists the available packs and asks which
 to install (multiple selectable; without a TTY it installs the default pack `opencode`, or
-pass pack names / `all` explicitly — see `--list`), then installs this pack's `agents/`,
-`commands/`, `plugins/` plus the composed `skills/driver-conventions/` and `agent-scripts/`
+pass pack names / `all` explicitly — see `--list`), then installs this pack's payload —
+`agents/`, `commands/`, `plugins/`, `agent-scripts/`, `skills/` —
 into `~/.config/opencode/` (or `$XDG_CONFIG_HOME/opencode`). OpenCode reloads config
 automatically — no restart needed. Pass `--no-plugin` to skip the driver-viz sidebar
 plugin. The installer requires `python3` and `git` (hard prerequisite — it fails with a
@@ -65,16 +65,16 @@ Re-run it after pulling changes.
   the installer both strip them; re-running the installer also removes previously
   installed copies.
 - **Driver helper scripts.** `agent-scripts/` installs to
-  `${XDG_CONFIG_HOME:-$HOME/.config}/opencode/agent-scripts/` (composed at install time from
-  the repo's `shared/agent-scripts/`, see `pack.conf`) and holds the four scripts
+  `${XDG_CONFIG_HOME:-$HOME/.config}/opencode/agent-scripts/` (shipped as this pack's
+  payload, see `pack.conf` `PACK_PAYLOAD`) and holds the four scripts
   the driver agents call from there: `detect-forge.sh` (forge detection for the `pr` phase,
   mirroring `skills/driver-conventions/SKILL.md` §7.1), `driver-state.py`
   (atomic, merge-never-clobber access to `.plan/<slug>/state.json`),
   `save-linear-attachments.py` (eager download of a Linear issue's attachments at
   spec-fetch time — preplan/plan persist `.plan/<slug>/spec.md` with local links, G-23)
   and `qa-command.sh` (the repo-local QA-command cache `git config driver.qa`, §7.3 —
-  G-24). See `shared/agent-scripts/README.md` in this repo for their contracts.
-  Likewise `skills/driver-conventions/` is composed from `shared/driver-conventions/`.
+  G-24). See `agent-scripts/README.md` in this repo for their contracts.
+  Likewise `skills/driver-conventions/` ships as this pack's payload.
 - **Copy-based on purpose** (OpenCode's discovery skips symlinked agent files) — don't
   symlink the directories yourself; see [AGENTS.md](AGENTS.md) for details.
 - Releases are cut with the manual **Release** workflow on GitHub (semver tag
@@ -289,7 +289,8 @@ final `pr` phase, which pushes the branch and opens the PR.
 ## Hacking on this library
 
 The repo layout, file-format contracts (`.plan/<slug>/state.json`, `manifest.json`, commit
-message format — single source of truth in `shared/driver-conventions/SKILL.md` (installed
-as `skills/driver-conventions/SKILL.md`) with JSON schemas beside it), extension points,
+message format — single source of truth in `skills/driver-conventions/SKILL.md` (this
+pack's payload, installed as `<config>/skills/driver-conventions/SKILL.md`) with JSON
+schemas beside it), extension points,
 and hard-won gotchas are documented in [AGENTS.md](AGENTS.md) (pack-local) and the repo-root
 [AGENTS.md](../../AGENTS.md).

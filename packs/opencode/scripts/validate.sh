@@ -2,7 +2,7 @@
 # Pre-release validation for the opencode pack (packs/opencode).
 # Used by the root scripts/validate.sh dispatcher (which .github/workflows call);
 # also runnable directly: sh packs/opencode/scripts/validate.sh
-# Requires: sh, ruby (with psych/yaml + json stdlib), python3 (shared/agent-scripts are a
+# Requires: sh, ruby (with psych/yaml + json stdlib), python3 (agent-scripts/ is a
 # shipped payload — CI on ubuntu-latest has it preinstalled). shellcheck is optional
 # (skipped if absent).
 set -eu
@@ -25,13 +25,12 @@ echo "== install.sh excludes .agent/ and __pycache__ from the installed payload 
 # installed — OpenCode discovers agents/**/*.md recursively, so an installed
 # .agent/*.md would be registered as an agent (".agent/history" etc.). This repo no
 # longer keeps its own .agent/ history (the driver no longer records it), so plant
-# synthetic fixtures in a payload dir AND a composed shared dir to keep this test
-# meaningful.
+# synthetic fixtures in two payload dirs to keep this test meaningful.
 install_tmp=$(mktemp -d)
-trap 'rm -rf "$install_tmp" agents/.agent "$REPO/shared/driver-conventions/.agent"' EXIT
-mkdir -p agents/.agent "$REPO/shared/driver-conventions/.agent"
+trap 'rm -rf "$install_tmp" agents/.agent skills/driver-conventions/.agent' EXIT
+mkdir -p agents/.agent skills/driver-conventions/.agent
 echo "# synthetic driver history" > agents/.agent/history.md
-echo "# synthetic decisions" > "$REPO/shared/driver-conventions/.agent/decisions.md"
+echo "# synthetic decisions" > skills/driver-conventions/.agent/decisions.md
 sh "$REPO/install.sh" --source --dest "$install_tmp/cfg" opencode >/dev/null
 if find "$install_tmp/cfg" -type d \( -name .agent -o -name __pycache__ \) | grep -q .; then
   echo "FAIL: .agent/ or __pycache__/ installed into $install_tmp/cfg:" >&2
@@ -46,14 +45,14 @@ if grep -Eq '(^|/)(\.agent|__pycache__)/' "$manifest"; then
 fi
 echo "ok: no .agent/ or __pycache__/ in installed payload or manifest"
 
-echo "== installer composes shared/ into the pack =="
+echo "== installer installs the full payload (incl. agent-scripts/ + skills/) =="
 for f in agents/driver.md plugins/driver-viz/tui.tsx \
          skills/driver-conventions/SKILL.md agent-scripts/driver-state.py \
          agent-packs.opencode.manifest agent-packs.opencode.version; do
   [ -e "$install_tmp/cfg/$f" ] || { echo "FAIL: installed cfg is missing $f" >&2; exit 1; }
 done
 [ -e "$install_tmp/cfg/snippets/gitignore.txt" ] && { echo "FAIL: snippets/ must be ship-only, not installed" >&2; exit 1; }
-echo "ok: payload + composed shared/ installed, snippets/ not installed"
+echo "ok: payload installed (incl. agent-scripts/ + skills/), snippets/ not installed"
 
 echo "== --list shows the pack =="
 if ! sh "$REPO/install.sh" --source --list | grep -q 'opencode'; then
@@ -63,38 +62,35 @@ fi
 echo "ok: --list lists opencode"
 
 echo "== asset convention files =="
-for f in "$REPO/install.sh" pack.conf agents commands snippets plugins \
-         "$REPO/shared/agent-scripts" "$REPO/shared/driver-conventions"; do
+for f in "$REPO/install.sh" pack.conf agents commands snippets plugins agent-scripts skills; do
   [ -e "$f" ] || { echo "FAIL: missing $f" >&2; exit 1; }
 done
-echo "ok: install.sh + pack.conf + agents/ commands/ snippets/ plugins/ + shared/ present"
+echo "ok: install.sh + pack.conf + agents/ commands/ snippets/ plugins/ agent-scripts/ skills/ present"
 
-echo "== shared/agent-scripts =="
-AS="$REPO/shared/agent-scripts"
-command -v python3 >/dev/null 2>&1 || { echo "FAIL: python3 is required (shared/agent-scripts/driver-state.py) but not found" >&2; exit 1; }
+echo "== agent-scripts =="
+AS="$PACK_DIR/agent-scripts"
+command -v python3 >/dev/null 2>&1 || { echo "FAIL: python3 is required (agent-scripts/driver-state.py) but not found" >&2; exit 1; }
 for s in "$AS"/*.sh; do
   sh -n "$s"
 done
-echo "ok: sh -n shared/agent-scripts/*.sh"
+echo "ok: sh -n agent-scripts/*.sh"
 if command -v shellcheck >/dev/null 2>&1; then
   shellcheck "$AS"/*.sh
-  echo "ok: shellcheck shared/agent-scripts/*.sh"
+  echo "ok: shellcheck agent-scripts/*.sh"
 else
   echo "skip: shellcheck not installed"
 fi
 python3 -m py_compile "$AS"/*.py
-echo "ok: py_compile shared/agent-scripts/*.py"
+echo "ok: py_compile agent-scripts/*.py"
 sh "$AS/tests/run-tests.sh"
 
 command -v ruby >/dev/null 2>&1 || { echo "FAIL: ruby is required for validation" >&2; exit 1; }
 
 echo "== frontmatter / schemas / cross-references =="
-export REPO
 ruby -ryaml -rjson <<'RUBY'
 failures = []
-repo = ENV.fetch("REPO")
 
-md_files = Dir.glob("agents/**/*.md") + Dir.glob("commands/**/*.md") + Dir.glob("#{repo}/shared/driver-conventions/**/SKILL.md")
+md_files = Dir.glob("agents/**/*.md") + Dir.glob("commands/**/*.md") + Dir.glob("skills/driver-conventions/**/SKILL.md")
 md_files.each do |f|
   m = File.read(f).match(/\A---\n(.*?)\n---\n/m)
   if m.nil?
@@ -108,7 +104,7 @@ md_files.each do |f|
   end
 end
 
-Dir.glob("#{repo}/shared/driver-conventions/**/*.json").each do |f|
+Dir.glob("skills/driver-conventions/**/*.json").each do |f|
   begin
     JSON.parse(File.read(f))
   rescue => e
@@ -148,7 +144,7 @@ end
 
 # content invariants across agents/ + the conventions skill
 SLUG_RE = '^[A-Z][A-Z0-9]*-[0-9]+$'
-content_files = Dir.glob("agents/**/*.md") + Dir.glob("#{repo}/shared/driver-conventions/**/*.md")
+content_files = Dir.glob("agents/**/*.md") + Dir.glob("skills/driver-conventions/**/*.md")
 content_files.each do |f|
   src = File.read(f)
   # invariant 1: every phase loads the conventions skill
@@ -185,8 +181,8 @@ end
 
 # invariant 5: the shipped driver-state.py carries the slug regex (its .plan/<slug>
 # path guard validates slugs against it)
-unless File.read("#{repo}/shared/agent-scripts/driver-state.py").include?(SLUG_RE)
-  failures << "shared/agent-scripts/driver-state.py: missing slug regex #{SLUG_RE}"
+unless File.read("agent-scripts/driver-state.py").include?(SLUG_RE)
+  failures << "agent-scripts/driver-state.py: missing slug regex #{SLUG_RE}"
 end
 
 if failures.empty?

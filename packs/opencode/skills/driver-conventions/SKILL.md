@@ -312,8 +312,8 @@ Both phases use the SAME rule, and `verdict` stays a two-value enum (`pass` | `f
 
 ## 8. Agent scripts (installed payload — the mechanism behind §1 state writes, §2 spec.md/attachments persistence (G-23) and §7.1 forge detection)
 
-The repo-root `install.sh` composes the pack's `shared/agent-scripts/` directory into the
-config dir at install time (see `packs/opencode/pack.conf` `PACK_COMPOSE`), so every phase
+The repo-root `install.sh` installs the pack's `agent-scripts/` payload directory into the
+config dir at install time (see `packs/opencode/pack.conf` `PACK_PAYLOAD`), so every phase
 addresses the scripts at the INSTALLED path — never the repo path:
 
 ```sh

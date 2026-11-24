@@ -11,15 +11,15 @@ Ship a second pack, `packs/vibe/`, that runs the **driver** feature cycle on
 [Mistral Vibe](https://github.com/mistralai/mistral-vibe) (Apache-2.0, Python CLI + Rust
 TUI). The pack reuses the harness-agnostic assets **unchanged**:
 
-- `shared/driver-conventions/` (SKILL.md + `references/` JSON schemas) — the single source
-  of truth for `.plan/<slug>/state.json`, `manifest.json`, commit messages, slug/branch/
-  worktree policy.
-- `shared/agent-scripts/` (`driver-state.py`, `detect-forge.sh`, `qa-command.sh`,
+- `packs/opencode/skills/driver-conventions/` (SKILL.md + `references/` JSON schemas) — the
+  single source of truth for `.plan/<slug>/state.json`, `manifest.json`, commit messages,
+  slug/branch/ worktree policy.
+- `packs/opencode/agent-scripts/` (`driver-state.py`, `detect-forge.sh`, `qa-command.sh`,
   `save-linear-attachments.py` + tests).
 
-The opencode pack (`packs/opencode/`) stays the reference implementation; both packs compose
-the same `shared/` dirs, so the on-disk driver contracts stay byte-compatible across
-harnesses.
+The opencode pack (`packs/opencode/`) stays the reference implementation; the vibe pack would
+compose those same dirs from the opencode pack via `PACK_COMPOSE`, so the on-disk driver
+contracts stay byte-compatible across harnesses.
 
 ## 2. Vibe extension points we map onto (research summary)
 
@@ -41,8 +41,8 @@ packs/vibe/
   pack.conf                  # PACK_NAME=vibe, PACK_DEFAULT_DEST=${VIBE_HOME:-$HOME/.vibe},
                              # PACK_PAYLOAD="agents skills prompts hook-scripts-as-compose?" (see below),
                              # PACK_FILES="hooks.toml:hooks.toml" (new installer key, §6),
-                             # PACK_COMPOSE="shared/agent-scripts:agent-scripts
-                             #   shared/driver-conventions:skills/driver-conventions
+                             # PACK_COMPOSE="packs/opencode/agent-scripts:agent-scripts
+                             #   packs/opencode/skills/driver-conventions:skills/driver-conventions
                              #   packs/vibe/hook-scripts:agent-scripts",
                              # PACK_PREREQS="vibe python3 git"
   agents/
@@ -62,8 +62,9 @@ packs/vibe/
 ```
 
 Installed result under `${VIBE_HOME:-~/.vibe}`: `agents/`, `prompts/`, `skills/driver/`,
-`skills/driver-conventions/` (composed), `agent-scripts/` (composed shared + hook-scripts),
-`hooks.toml`, plus `agent-packs.vibe.version` / `.manifest`.
+`skills/driver-conventions/` (composed from the opencode pack), `agent-scripts/` (composed
+from the opencode pack + hook-scripts), `hooks.toml`, plus `agent-packs.vibe.version` /
+`.manifest`.
 
 ## 4. Component mapping
 
@@ -83,10 +84,10 @@ Installed result under `${VIBE_HOME:-~/.vibe}`: `agents/`, `prompts/`, `skills/d
 
 ### 5.1 Unchanged
 
-- `shared/driver-conventions/` → `skills/driver-conventions/SKILL.md`: Vibe follows the
+- `packs/opencode/skills/driver-conventions/` → `skills/driver-conventions/SKILL.md`: Vibe follows the
   agentskills.io spec, so the file ports with frontmatter normalization only (`name` must be
   lowercase-hyphenated, description ≤1024 chars). `references/*.json` ship as extra files.
-- `shared/agent-scripts/` → `$VIBE_HOME/agent-scripts/`: logic unchanged; only the install
+- `packs/opencode/agent-scripts/` → `$VIBE_HOME/agent-scripts/`: logic unchanged; only the install
   path and the session-env detection (`VIBE_SESSION=1`) change.
 - All `.plan/<slug>/` file contracts (state.json, manifest.json, commit format, slug regex
   `^[A-Z][A-Z0-9]*-[0-9]+$`) — byte-compatible; same schemas in `references/`.
@@ -126,7 +127,7 @@ Installed result under `${VIBE_HOME:-~/.vibe}`: `agents/`, `prompts/`, `skills/d
   the Rust TUI is closed. Replacement, in increasing order of effort:
   1. `post_agent` hooks (matched per phase subagent) emitting a one-line phase status as
      `system_message`, plus `notification` hooks on turn completion.
-  2. A harness-agnostic CLI watcher `shared/agent-scripts/driver-viz.py` that renders the
+  2. A harness-agnostic CLI watcher `packs/opencode/agent-scripts/driver-viz.py` that renders the
      7-phase stepper from `.plan/<slug>/state.json` to stdout (port of
      `plugins/driver-viz/lib/state.ts` derivations — pure logic) for tmux/terminal splits.
   3. Headless: `vibe -p --output-dir` writes `export.json` (usage, cost, steps, outcome,
@@ -150,7 +151,7 @@ Installed result under `${VIBE_HOME:-~/.vibe}`: `agents/`, `prompts/`, `skills/d
    `plugin`-free skill frontmatter, hooks.toml syntax, compose/payload paths, prompt-file
    references `system_prompt_id` ↔ `prompts/*.md`).
 4. Root `README.md`: list the vibe pack. `packs/README.md` "Adding a pack" already covers the
-   flow. Release workflow payload is `packs/ shared/ install.sh LICENSE` (generic) — verify
+   flow. Release workflow payload is `packs/ install.sh LICENSE` (generic) — verify
    its self-test handles two packs and that `packs/vibe/scripts|docs` are stripped.
 5. `install.sh` no-TTY default stays `opencode when present`; the picker lists both.
 
