@@ -131,6 +131,10 @@ jobs:
           find "$stage_root/agent-packs/packs" -mindepth 2 -maxdepth 2 \
             \( -name scripts -o -name docs -o -name README.md -o -name AGENTS.md \) \
             -prune -exec rm -rf {} +
+          # plugin test dirs are repo-only too: OpenCode loads a plugin's entry file
+          # only, tests are never needed at runtime
+          find "$stage_root/agent-packs/packs" -type d -path '*/plugins/*' -name test \
+            -prune -exec rm -rf {} +
           # strip any gitignored .agent/ (legacy driver history), __pycache__/ and
           # node_modules/ from the payload: OpenCode discovers agents/**/*.md
           # recursively, so shipped .agent/*.md would be installed and registered as
@@ -188,9 +192,9 @@ jobs:
           # the payload must not carry repo-only pack dev files or bytecode dirs
           # (patterns anchored with (^|/) so the top-level "agent-packs/" dir name
           # itself cannot match; packs/README.md — the pack contract — ships on purpose)
-          if tar -tzf "$t/agent-packs.tar.gz" | grep -Eq '(^|/)packs/[^/]+/(scripts|docs)/|node_modules|(^|/)(\.agent|__pycache__)/|(^|/)packs/[^/]+/(README|AGENTS)\.md'; then
+          if tar -tzf "$t/agent-packs.tar.gz" | grep -Eq '(^|/)packs/[^/]+/(scripts|docs)/|(^|/)packs/[^/]+/plugins/.*/test/|node_modules|(^|/)(\.agent|__pycache__)/|(^|/)packs/[^/]+/(README|AGENTS)\.md'; then
             echo "FAIL: payload carries dev files or .agent/__pycache__/node_modules" >&2
-            tar -tzf "$t/agent-packs.tar.gz" | grep -E '(^|/)packs/[^/]+/(scripts|docs)/|node_modules|(^|/)(\.agent|__pycache__)/|(^|/)packs/[^/]+/(README|AGENTS)\.md' >&2
+            tar -tzf "$t/agent-packs.tar.gz" | grep -E '(^|/)packs/[^/]+/(scripts|docs)/|(^|/)packs/[^/]+/plugins/.*/test/|node_modules|(^|/)(\.agent|__pycache__)/|(^|/)packs/[^/]+/(README|AGENTS)\.md' >&2
             exit 1
           fi
           # the legacy alias must be the OLD layout (top-level opencode-agents/ with
@@ -203,10 +207,10 @@ jobs:
           # installed payload must match the checkout (payload dirs + composed shared/)
           diff -r --exclude=.agent --exclude=__pycache__ "$t/agent-packs/packs/opencode/agents" packs/opencode/agents
           diff -r --exclude=.agent --exclude=__pycache__ "$t/agent-packs/packs/opencode/commands" packs/opencode/commands
-          diff -r --exclude=.agent --exclude=__pycache__ "$t/agent-packs/packs/opencode/plugins" packs/opencode/plugins
+          diff -r --exclude=.agent --exclude=__pycache__ --exclude=test "$t/agent-packs/packs/opencode/plugins" packs/opencode/plugins
           diff -r --exclude=.agent --exclude=__pycache__ "$t/agent-packs/packs/opencode/snippets" packs/opencode/snippets
           # the vibe-acp pack ships its payload (pack.conf + plugins/ + snippets/)
-          diff -r --exclude=.agent --exclude=__pycache__ "$t/agent-packs/packs/vibe-acp/plugins" packs/vibe-acp/plugins
+          diff -r --exclude=.agent --exclude=__pycache__ --exclude=test "$t/agent-packs/packs/vibe-acp/plugins" packs/vibe-acp/plugins
           diff -r --exclude=.agent --exclude=__pycache__ "$t/agent-packs/packs/vibe-acp/snippets" packs/vibe-acp/snippets
           test -f "$t/agent-packs/packs/vibe-acp/pack.conf"
           # vibe-acp installs from the release payload into a throwaway config dir

@@ -35,9 +35,6 @@ let hooks: VibeAcpHooks = {}
 /** Called by the pack's server plugin at setup. Safe to call again (merges). */
 export function configureVibeAcp(next: VibeAcpHooks): void {
   hooks = { ...hooks, ...next }
-  if (manager && next.directory !== undefined) {
-    // directory changes only matter before the first turn; recreate the manager otherwise
-  }
 }
 
 function sharedManager(options: VibeAcpProviderOptions): SessionManager {

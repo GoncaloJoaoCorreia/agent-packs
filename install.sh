@@ -262,7 +262,8 @@ select_packs_interactive() {
         ''|*[!0-9]*) ok=0 ;;
         *)
           if [ "$tok" -ge 1 ] && [ "$tok" -le "$i" ]; then
-            p=$(printf '%s\n' "$ALL_PACKS" | awk -v n="$tok" 'NR==n')
+            # shellcheck disable=SC2086  # $ALL_PACKS is an intentional word list
+            p=$(printf '%s\n' $ALL_PACKS | awk -v n="$tok" 'NR==n')
             sel="$sel $p"
           else
             ok=0
