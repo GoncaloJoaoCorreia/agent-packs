@@ -1,211 +1,124 @@
-# AGENTS.md — opencode-agents
+# AGENTS.md — agent-packs
 
-Personal library of OpenCode v2 agents/commands/skills plus one TUI plugin. Ships the
-**driver** (`/driver`) — a multi-phase feature-cycle orchestrator — and **driver-viz**, a
-TUI-only plugin that renders the live phase flow chart of the current driver run in the
-sidebar. There is no build or lint here; this repo is pure config/markdown plus
-`install.sh`. Tests + validation run in CI on every PR (`.github/workflows/test.yml`:
-`scripts/validate.sh` for agent declarations + `scripts/validate-driver-viz.sh` for the
-plugin, both including the agent-scripts unit suite).
-
-## Install / verify
-
-- `./install.sh` is dual-mode and auto-detects: inside this checkout (`.git/` + `agents/`
-  next to the script) it installs by **copying from source** — nothing is built. Run
-  standalone (e.g. `curl …/install.sh | sh`, where `$0` is not a file) it downloads the
-  latest GitHub release payload and installs from that. Flags: `--source` / `--release`
-  force a mode, `--dest DIR` overrides the target (default
-  `${XDG_CONFIG_HOME:-~/.config}/opencode`), `--no-plugin` skips the driver-viz plugin
-  (and removes a previously installed copy via manifest cleanup). **Re-run `./install.sh`
-  after every edit here** — OpenCode reloads config automatically, no restart.
-- **Prerequisite check:** `install.sh` hard-fails before installing (and before downloading
-  in `--release` mode) when `python3` cannot execute or `git` is missing — the shipped
-  `agent-scripts/` need both. Optional tools (a forge CLI `gh`/`glab`/`forgejo-cli`,
-  `shellcheck`) only produce a warning when absent.
-- **Release assets convention:** each GitHub release carries exactly `opencode-agents.tar.gz`
-  (one top-level `opencode-agents/` dir with `agents/ commands/ skills/ snippets/
-  agent-scripts/ plugins/ install.sh LICENSE`) and `SHA256SUMS` (sha256sum format). The installer fetches them
-  unauthenticated from `releases/latest/download/` (the repo is public). **Releases are cut
-  by the Release workflow (see Releases below), which builds and uploads these assets** —
-  don't hand-upload them; v0.1 was seeded manually before the workflow existed.
-- Each install writes `opencode-agents.version` + `opencode-agents.manifest` into the
-  config dir; the manifest drives stale-file cleanup on reinstall. Installs only touch
-  `agents/ commands/ skills/ agent-scripts/ plugins/` (plugins/ only without
-  `--no-plugin`) + those two meta files.
-- **`.agent/` and `__pycache__/` inside the payload dirs are excluded** from the release
-  tarball and the install (manifest list + `rm -rf` after the copy). OpenCode discovers
-  `agents/**/*.md` recursively, so an installed `agents/.agent/*.md` would register as
-  agents (`.agent/history`, `.agent/decisions`) — the driver no longer records history,
-  so this is defense against legacy leftovers in old checkouts. `scripts/validate.sh`
-  regression-tests the exclusion by planting a synthetic `.agent/` fixture, running
-  `install.sh --source` into a temp dir, and asserting it is not installed; release.yml's
-  self-test asserts it on the downloaded payload. Re-running `./install.sh` also cleans
-  previously installed copies via the manifest stale-file loop.
-- Install is **copy-based on purpose** (`cp -RL`): do NOT symlink these dirs into
-  `~/.config/opencode/` or `.opencode/` — OpenCode's discovery skips symlinked agent files
-  (e.g. the `agents/driver/plan-thorough.md` symlink placeholder won't register).
-- The plugin lands in `<config>/plugins/driver-viz/` where OpenCode **auto-discovers** it
-  (no `cli.json` edit needed). It is TUI-only: `package.json` maps `exports["./tui"]` to
-  `tui.tsx`; `@opencode/plugin/tui`, `@opentui/*` and `solid-js` are resolved by the host at
-  runtime, so there is no build step and no `node_modules` to install.
-- Sanity check after changes: `opencode debug agents` should list `driver` and `driver/*`
-  (after installing; smoke-test with a throwaway `XDG_CONFIG_HOME` first).
+Personal library of agent-harness extensions (**packs**): one self-contained pack per
+harness under `packs/<name>/`, plus harness-agnostic shared code under `shared/`.
+Currently ships one pack: **opencode** (`packs/opencode/`) — the **driver**
+(`/driver`, a multi-phase feature-cycle orchestrator) and the **driver-viz** TUI plugin.
+There is no build or lint at the repo level; each pack may carry its own validation under
+`packs/<name>/scripts/` (the root `scripts/validate.sh` dispatcher runs all of them).
+Tests + validation run in CI on every PR (`.github/workflows/test.yml`).
 
 ## Layout
 
 ```
-agents/driver.md            # primary orchestrator (id: driver) — phase registry + VARIANTS table live here
-agents/driver/*.md          # phase subagents (driver/preplan, driver/plan, driver/implement, ...)
-commands/driver.md          # /driver entry point (static `!` shell blocks — see gotchas)
-commands/phases/*.md        # standalone /phases/<phase> wrappers (subagent: true)
-skills/driver-conventions/  # THE single source of truth for all shared contracts
-agent-scripts/              # shipped helper scripts the driver agents call from <config>/agent-scripts/
-                            #   (detect-forge.sh = forge detection, driver-state.py = atomic
-                            #    state.json access, save-linear-attachments.py = eager Linear
-                            #    attachment download (G-23), qa-command.sh = repo-local QA-command
-                            #    cache driver.qa (G-24); tests in agent-scripts/tests/, gated by
-                            #    scripts/validate.sh)
-snippets/                   # opencode.jsonc bits + .gitignore snippet (.plan/) for target repos
-docs/                       # repo-only docs (NOT in the release payload): driver-viz-sidebar.png = the README screenshot
-plugins/driver-viz/         # TUI-only plugin: animated sidebar flow chart of the current run
-  tui.tsx                   #   entrypoint (Plugin.define, sidebar.content slot, keymap, fs watch)
-  lib/phases.ts             #   phase registry mirror of agents/driver.md §6 (validate-driver-viz.sh enforces sync)
-  lib/state.ts              #   .plan/<slug>/state.json scanning + pure derivations (unit-tested)
-  lib/theme.ts              #   defensive theme-token resolution with fallbacks
-  lib/FlowChart.tsx         #   the stepper component (spinner + pulsing connector)
-  test/state.test.ts        #   node --test (node >= 22.18 strips types; no build)
-scripts/validate.sh         # pre-release validation of agent/command/skill declarations — CI + local
-scripts/validate-driver-viz.sh  # driver-viz plugin checks + node --test + render snapshots — CI + local
-scripts/driver-viz-render-test/  # headless bun render/snapshot tests for the plugin (kept out of
-                                  # plugins/ so the release payload never ships its node_modules)
-scripts/screenshot-driver-viz.py  # regenerates docs/driver-viz-sidebar.png (kept out of plugins/ so the
-                                  # release payload never ships it — see "driver-viz plugin" below)
-.github/workflows/release.yml  # manual release pipeline (see Releases)
-install.sh                  # dual-mode installer (source checkout vs checksum-verified release)
+install.sh                      # self-contained installer (pick packs, install into config dirs)
+packs/
+  README.md                     # the pack contract (pack.conf keys, installer behavior, releases)
+  opencode/
+    pack.conf                   # pack manifest sourced by install.sh (payload, compose, prereqs, meta prefix)
+    agents/  commands/  plugins/  snippets/   # payload (installed into the config dir root;
+                                  #   snippets/ is ship-only; plugins/ skipped by --no-plugin)
+    scripts/                    # repo-only dev tooling (validate.sh, validate-driver-viz.sh,
+                                #   driver-viz-render-test/, screenshot-driver-viz.py) — NOT shipped
+    docs/  README.md  AGENTS.md # repo-only docs — NOT shipped
+shared/
+  agent-scripts/                # harness-agnostic driver helper scripts (+ tests/) — composed into
+                                #   the opencode pack as <config>/agent-scripts/ at install time
+  driver-conventions/           # THE single source of truth for the driver contracts (SKILL.md +
+                                #   references/*.json schemas) — composed into the opencode pack
+                                #   as <config>/skills/driver-conventions/ at install time
+scripts/
+  validate.sh                   # repo-wide dispatcher: install.sh syntax, pack.conf sanity,
+                                #   shared agent-scripts tests, every packs/*/scripts/validate*.sh
+.github/workflows/
+  test.yml                      # PR/push validation
+  release.yml                   # manual release pipeline (see Releases)
 ```
 
-## driver-viz plugin
+## Install / verify
 
-Reads `.plan/<slug>/state.json` at the repo root of the session's location (so `--worktree`
-runs show up — the driver moves the session into the worktree) via `fs.watch` + a 1s poll,
-and renders the 7-phase stepper in `sidebar.content`: `✓/✗/⊘/○` for done/failed/skipped/
-pending, a braille spinner + pulsing connector on the running phase, per-task dots under
-implement, PR link in the header. Session-scoped: only runs whose `state.session_id`
-matches the current session's ID (sidebar.content slot input `sessionID`, fallback
-`ui.router.current()`) are shown, a newly started run of this session is switched to
-immediately, and `/driver-viz` (palette "Driver: show next run") cycles only this
-session's runs; the filter is strict (no fallback): an unknown session ID, no matching
-run, `session_id: null` runs (older drivers) or an unparseable state.json all hide the
-section. Hidden when the repo has no `.plan/`.
-The sidebar also shows an elapsed-time counter (`⏱`, from the earliest
-`phases.*.started_at`) in the header while a phase is running, a clickable `[Open Plan]`
-on the Plan row once the plan phase is done (plus the palette command "Driver: open
-plan") that opens `.plan/<slug>/plan.md` with the system default app (`open`/`xdg-open`
-via `node:child_process`, errors to a toast), and a completion block below the task
-graph once every phase is done/skipped: total time, best-effort token count from the
-session record, `+A -D` lines changed (`git diff --numstat` merge-base..HEAD, omitted on
-git failure), and a clickable `[Open report]` when `.plan/<slug>/report.md` exists
-(written by the driver at cycle end, driver §7; palette fallback "Driver: open report").
-At most one phase renders as running (`effectiveStatuses` in `lib/state.ts` — later
-running phases show pending, so Audit is only in progress for run-scoped audit runs),
-the spinner/connector use a guaranteed non-white `spinner` tint (`lib/theme.ts`), and
-the Implement subtask dots are colored per task state with an animated in-progress dot
-(`taskIndicators`) that animates through the circular spinner `◐◓◑◒` (`TASK_DOT_SPINNER`
-in `lib/state.ts` — the phase-level running glyph keeps braille); single-task implement
-runs hide both the dots row and the `n/total` counter (`subtaskRowVisible`).
-While a **cycle-scope fix round** runs (fix-mode implement spawn after a failed gate round —
-detected via the explicit `implement.runs[]` marker with `commit: null`, with a fallback
-derivation from the `audit`/`review`/`qa` rounds + fixes lists for legacy states), the
-owning gate phase is promoted to running (`fixRound` in `lib/state.ts`, applied after
-`effectiveStatuses`, so the single-running rule still caps at one) and a plugin-only
-`↻ Fix rN` row renders directly under it in `FlowChart.tsx` (spinner while the fix runs,
-`✓` once landed, hidden once the gate phase is done; the row is NOT in `lib/phases.ts` —
-the registry keeps exactly the 7 phases).
-Option `animate: false` (cli.json plugins object form) disables animation. Slug dirs are
-validated against `^[A-Z][A-Z0-9]*-[0-9]+$` before any path use; unreadable state.json renders
-as "unreadable" instead of crashing. Theme colors resolve defensively (custom themes may
-omit tokens). Change a phase name/order in `agents/driver.md` §6 → update
-`plugins/driver-viz/lib/phases.ts` — `scripts/validate-driver-viz.sh` fails otherwise.
-README screenshot: `docs/driver-viz-sidebar.png` (embedded in README.md). Regenerate after
-layout changes with `python3 scripts/screenshot-driver-viz.py` — needs `pillow` and a
-JetBrains Mono Nerd Font installed (glyph coverage for the braille spinner). The generator
-lives in top-level `scripts/`, not under `plugins/`, so it is never shipped in the release
-payload or installed into the config dir.
-
-### driver-viz render snapshot tests
-
-`scripts/driver-viz-render-test/` renders the real `plugins/driver-viz/lib/FlowChart.tsx`
-headlessly and snapshots the frame: it runs under **bun** (OpenTUI's native render lib only
-loads under bun, not node), transforms the plugin's `.tsx` with the same
-`@opentui/solid/bun-plugin` OpenCode uses (see `preload.ts`), mounts `DriverSection` with
-`testRender` from `@opentui/solid`, freezes `Date.now`, uses fixed run fixtures in the OS
-temp dir (outside any git repo, so the `+A/-D` line deterministically omits), and compares
-`captureSpans()` (styled frame: text + fg/bg/attributes, serialized as
-`<fg=..;bg=..;attrs>text</>`) against committed `snapshots/*.snap` — so snapshots cover the
-entire render including styling. `PREVIEW=1 bun run test` prints the scenarios as ANSI to
-the terminal to eyeball styling changes. A render throw fails the
-scenario — this harness is what caught the nested-`<text>` crash
-("TextNodeRenderable only accepts strings…"). `scripts/validate-driver-viz.sh` runs it when
-`bun` is on PATH (CI: `test.yml` installs bun via `setup-bun`; without bun the section
-skips). The harness lives in top-level `scripts/` so the release payload and the installed
-config dir never get its `node_modules` (only `bun.lock` is committed, deps are pinned).
-
-**Regenerating snapshots — only after an INTENTIONAL UI change** (glyphs, layout, labels,
-status rendering in `FlowChart.tsx` / `tui.tsx`):
-
-```
-cd scripts/driver-viz-render-test
-UPDATE_SNAPSHOTS=1 bun run test    # writes snapshots/*.snap
-```
-
-Then `git diff snapshots/` and review every changed line before committing. Never
-regenerate to silence a crash or an unexpected diff — fix the code (or the structural
-guard in `validate-driver-viz.sh`) instead. Note the snapshots exercise the pinned npm
-`@opentui/*` version, which proxies — but does not exactly match — the version embedded in
-the OpenCode binary.
+- `./install.sh` is dual-mode and auto-detects: inside this checkout (`.git/` + `packs/`
+  next to the script) it installs by **copying from source** — nothing is built. Run
+  standalone (e.g. `curl …/install.sh | sh`, where `$0` is not a file) it downloads the
+  latest GitHub release payload and installs from that. Flags: `--source` / `--release`
+  force a mode, `--dest DIR` overrides the target of a single pack (each pack otherwise
+  uses its `PACK_DEFAULT_DEST`), `--no-plugin` skips every pack's `plugins/` payload dir,
+  `--list` prints the packs. With no pack argument the installer asks interactively on a
+  TTY (reads `/dev/tty`, so it works with `curl | sh`) and accepts multiple selections;
+  without a TTY it installs the default pack (`opencode` when present). OpenCode reloads
+  config automatically, no restart. **Re-run `./install.sh` after every edit here.**
+- **Prerequisite check:** per pack, `PACK_PREREQS` tools must execute (the opencode pack
+  requires `python3` and `git` — the shipped `shared/agent-scripts/` need both); the
+  installer hard-fails with a clear message before touching any config dir. Optional
+  tools (a forge CLI `gh`/`glab`/`forgejo-cli`, `shellcheck`) only produce a warning.
+- **Release assets convention:** each GitHub release carries exactly `agent-packs.tar.gz`
+  (one top-level `agent-packs/` dir with `packs/ shared/ install.sh LICENSE`) and
+  `SHA256SUMS` (sha256sum format). The installer fetches them unauthenticated from
+  `releases/latest/download/` (the repo is public). **Releases are cut by the Release
+  workflow (see Releases below), which builds and uploads these assets** — don't
+  hand-upload them.
+- The release workflow strips repo-only files from the payload: `packs/*/scripts/`,
+  `packs/*/docs/`, pack-level `README.md`/`AGENTS.md`, plus any `node_modules/`, `.agent/`
+  and `__pycache__/` anywhere. The installer additionally strips `.agent/`/`__pycache__/`
+  from everything it copies and never lists them in the manifest.
+- Each pack install writes `<PACK_META_PREFIX>.version` + `<PACK_META_PREFIX>.manifest`
+  into the pack's config dir; the manifest drives stale-file cleanup on reinstall
+  (files listed there under the pack's managed dirs that no longer exist upstream are
+  removed). The opencode pack also cleans up the legacy pre-rename
+  `opencode-agents.manifest` / `opencode-agents.version` once.
+- Installs are **copy-based on purpose** (`cp -RL`): do NOT symlink pack payload dirs into
+  a config dir — OpenCode's discovery skips symlinked agent files (e.g. the
+  `packs/opencode/agents/driver/plan-thorough.md` symlink placeholder won't register).
+- Sanity check after changes: `sh scripts/validate.sh` must pass, and a throwaway
+  `XDG_CONFIG_HOME=$(mktemp -d) ./install.sh --source opencode` must produce a config dir
+  with `agents/`, `commands/`, `plugins/`, plus the composed `agent-scripts/` and
+  `skills/driver-conventions/`.
 
 ## Releases
 
 - Cut a release with the manual **Release** workflow (`.github/workflows/release.yml`,
   "Run workflow" button on `main`). Optional `version` input (`vX.Y.Z` or `X.Y.Z`; must be
-  new and greater than the latest tag); empty = auto patch-bump of the latest `v*` tag
-  (`v0.1` normalizes to `v0.1.0` → next `v0.1.1`; no tags → `v0.1.0`).
-- The workflow: runs `scripts/validate.sh` (agent declarations) + `scripts/validate-driver-viz.sh`
-  (plugin) → tags + pushes `main` → builds
-  `opencode-agents.tar.gz` + `SHA256SUMS` (the asset convention install.sh expects) →
-  creates the GitHub release with an auto changelog → self-tests (download, checksum,
-  diff vs checkout, `install.sh --release` into a temp dir).
-- Run `./scripts/validate.sh` and `./scripts/validate-driver-viz.sh` locally before pushing
-  release-relevant changes.
+  new and greater than the latest tag); empty = auto patch-bump of the latest `v*` tag.
+- The workflow: runs `./scripts/validate.sh` → tags + pushes `main` → builds
+  `agent-packs.tar.gz` + `SHA256SUMS` → creates the GitHub release with an auto changelog
+  → self-tests (download, checksum, payload hygiene, diff vs checkout,
+  `install.sh --release` into a temp dir, `--list`, legacy-manifest cleanup).
+- Run `./scripts/validate.sh` locally before pushing release-relevant changes.
 - The workflow operates on remote `main` — commit + push first, or the release ships
   stale content.
+- **Repo rename:** the repo was renamed `opencode-agents` → `agent-packs`; GitHub
+  redirects git/raw/release URLs of the old name, so old `curl …/opencode-agents/…`
+  one-liners keep working.
 
 ## Contracts — one source of truth
 
-All file formats (`.plan/<slug>/state.json`, `manifest.json`, commit messages,
-slug/branch/worktree policy) are defined in `skills/driver-conventions/SKILL.md`
-with JSON schemas in `skills/driver-conventions/references/`. **If you change a format,
-update the schemas too**, and keep README.md's summary in sync.
+All driver file formats (`.plan/<slug>/state.json`, `manifest.json`, commit messages,
+slug/branch/worktree policy) are defined in `shared/driver-conventions/SKILL.md`
+with JSON schemas in `shared/driver-conventions/references/`. The opencode pack composes
+that directory into `<config>/skills/driver-conventions/` at install time (see
+`packs/opencode/pack.conf` `PACK_COMPOSE`). **If you change a format, update the schemas
+too**, and keep the pack READMEs in sync.
 
 ## Extension points
 
-- **New phase**: add `agents/driver/<phase>.md`, `commands/phases/<phase>.md`, and a row
-  in the phase registry in `agents/driver.md` (section 6).
+- **New pack**: `mkdir packs/<name>/` + `pack.conf` (contract in `packs/README.md`), payload
+  dirs, optional `packs/<name>/scripts/validate*.sh` (picked up by the root dispatcher
+  automatically). Shared code goes in `shared/` and is referenced via `PACK_COMPOSE`.
+  Nothing else to wire: `--list`, the picker, the release payload and validation all
+  discover packs from `packs/*/pack.conf`.
+- **New phase** (opencode pack): add `packs/opencode/agents/driver/<phase>.md`,
+  `packs/opencode/commands/phases/<phase>.md`, and a row in the phase registry in
+  `packs/opencode/agents/driver.md` (section 6) — plus the mirrored row in
+  `packs/opencode/plugins/driver-viz/lib/phases.ts` (`validate-driver-viz.sh` fails otherwise).
 - **New variant of a phase**: row in the VARIANTS table in `agents/driver.md`; replace the
   `plan-thorough.md` symlink with a real agent file (same output contract) when needed.
 - **New `/driver` flag**: parse it in section 1 of `agents/driver.md`, store in `state.params`.
-- **New forge support** (pr phase): extend the detection + cache contract and the per-forge
-  command table in `skills/driver-conventions/SKILL.md` §7, the dispatch in
-  `agents/driver/pr.md`, the detection step in `agents/driver/preplan.md`, and
-  `state.remote` / `params.forge` / `state.pr.forge` in
-  `skills/driver-conventions/references/state.schema.json`. The detected forge is cached
-  repo-locally in `git config driver.forge` (never committed).
-- **New agent-script**: add it under `agent-scripts/` with unit tests in
-  `agent-scripts/tests/` (wired into `run-tests.sh`), and mirror it in `install.sh`
-  (payload dirs + manifest + stale-cleanup case), `scripts/validate.sh` (asset list +
-  syntax/tests section), `.github/workflows/release.yml` (payload `cp` + self-test
-  `diff`), plus README/AGENTS.md and an invocation/exit-code entry in
-  `skills/driver-conventions/SKILL.md` §8.
+- **New agent-script**: add it under `shared/agent-scripts/` with unit tests in
+  `shared/agent-scripts/tests/` (wired into `run-tests.sh`), and mirror it in
+  `packs/opencode/pack.conf` (`PACK_COMPOSE` already covers the dir), the opencode pack
+  validator (asset list + syntax/tests section), `.github/workflows/release.yml`
+  (self-test diff of `shared/agent-scripts`), plus the pack README/AGENTS.md and an
+  invocation/exit-code entry in `shared/driver-conventions/SKILL.md` §8.
 
 ## Gotchas (hard-earned — do not rediscover)
 
@@ -226,9 +139,10 @@ update the schemas too**, and keep README.md's summary in sync.
   via `/models`).
 - `.plan/` is scratch and gitignored in target repos — the driver writes nothing else into them.
 - Don't re-implement routine, scriptable logic inside agent prompts (inline shell/python
-  in `agents/*.md`). If a phase needs mechanical, repeated work — git/forge probing, JSON
-  merges of `state.json`, looping over files, parsing command output — put it in a
-  shipped, unit-tested `agent-scripts/` script and call that from the prompt instead.
-  Precedent: `detect-forge.sh` + `driver-state.py` (G-20 / PR #1); the mechanism and the
-  mandate live in `skills/driver-conventions/SKILL.md` §8. Inline logic in a prompt is
-  only for one-off, phase-specific steps.
+  in `packs/opencode/agents/*.md`). If a phase needs mechanical, repeated work — git/forge
+  probing, JSON merges of `state.json`, looping over files, parsing command output — put it
+  in a shipped, unit-tested `shared/agent-scripts/` script and call that from the prompt
+  instead. Precedent: `detect-forge.sh` + `driver-state.py` (G-20 / PR #1); the mechanism
+  and the mandate live in `shared/driver-conventions/SKILL.md` §8. Inline logic in a
+  prompt is only for one-off, phase-specific steps.
+- The installer prompt must read from `/dev/tty` (with `curl | sh`, stdin is the script).

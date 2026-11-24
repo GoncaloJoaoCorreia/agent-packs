@@ -2,7 +2,7 @@
   "name": "driver-viz-render-test",
   "private": true,
   "version": "1.0.0",
-  "description": "Headless render/snapshot tests for the driver-viz TUI plugin (scripts/validate-driver-viz.sh, bun-gated). NOT shipped in the release payload — lives in top-level scripts/ on purpose (see AGENTS.md).",
+  "description": "Headless render/snapshot tests for the driver-viz TUI plugin (pack scripts/validate-driver-viz.sh, bun-gated). NOT shipped in the release payload — lives in the pack's repo-only scripts/ dir, which release.yml strips from the tarball (see AGENTS.md).",
   "type": "module",
   "scripts": {
     "test": "bun --preload ./preload.ts run.ts"

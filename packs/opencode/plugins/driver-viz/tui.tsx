@@ -1,4 +1,4 @@
-// driver-viz — TUI-only plugin for opencode-agents.
+// driver-viz — TUI-only plugin of the agent-packs opencode pack.
 //
 // Adds a "DRIVER" section to the TUI sidebar (slot: sidebar.content) with an animated flow
 // chart of the current driver run, read live from .plan/<slug>/state.json at the repo root

@@ -1,8 +1,10 @@
 # agent-scripts
 
 Unit-tested automation scripts for the routine "by hand" driver tasks, usable on
-any system with minimal prerequisites. Shipped in the release payload and
-installed to:
+any system with minimal prerequisites. Harness-agnostic shared code: the repo-root
+`install.sh` composes this directory into each pack's config dir at install time
+(opencode: `<config>/agent-scripts/`, see `packs/opencode/pack.conf` `PACK_COMPOSE`), and
+it ships in the release payload. Installed to:
 
 ```
 ${XDG_CONFIG_HOME:-$HOME/.config}/opencode/agent-scripts/
@@ -241,7 +243,7 @@ JSON escaping byte-identical.
 ## Tests
 
 ```
-sh agent-scripts/tests/run-tests.sh
+sh shared/agent-scripts/tests/run-tests.sh
 ```
 
 Runs `tests/test-detect-forge.sh` (scratch git repos in `mktemp -d` + stub CLI

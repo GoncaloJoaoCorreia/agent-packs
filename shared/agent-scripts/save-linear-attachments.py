@@ -75,7 +75,7 @@ PROG = "save-linear-attachments.py"
 DEFAULT_ALLOWED_HOSTS = "uploads.linear.app"
 LINK_PREFIX = "attachments/"  # fixed relative-link prefix in the rewritten markdown
 TIMEOUT = 30  # seconds
-USER_AGENT = "save-linear-attachments.py/1.0 (opencode-agents)"
+USER_AGENT = "save-linear-attachments.py/1.0 (agent-packs)"
 MAX_NAME = 80  # cap for the sanitized base name
 
 # Content-Type -> extension when the sanitized name has none.

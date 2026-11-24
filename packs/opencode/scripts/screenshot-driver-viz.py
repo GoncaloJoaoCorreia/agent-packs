@@ -2,15 +2,16 @@
 """Regenerate the README screenshot — a mock terminal-window capture of the driver-viz
 sidebar section, matching what the TUI actually renders (see plugins/driver-viz/lib/FlowChart.tsx).
 
-    python3 scripts/screenshot-driver-viz.py
+    python3 packs/opencode/scripts/screenshot-driver-viz.py
 
-Lives in top-level scripts/ on purpose: the release payload ships only plugins/, and
+Lives in the pack's repo-only scripts/ on purpose: the release payload ships only the
+pack payload dirs (plugins/ etc.), and release.yml strips scripts/ from the tarball, so
 this generator must NOT be installed into the OpenCode config dir.
 Requires: pillow (pip install pillow) and a JetBrains Mono Nerd Font on the system
 (covers the braille spinner + box-drawing glyphs). Glyphs missing from the primary
 font (e.g. U+25D0-U+25D3, which the Nerd Font mono lacks) fall back per character to
 Menlo / Apple Symbols / Apple Color Emoji, so nothing renders as a .notdef tofu box.
-Output: docs/driver-viz-sidebar.png (referenced from README.md; docs/ is NOT part of
+Output: ../docs/driver-viz-sidebar.png (referenced from the pack README.md; docs/ is NOT part of
 the release payload either).
 """
 import glob

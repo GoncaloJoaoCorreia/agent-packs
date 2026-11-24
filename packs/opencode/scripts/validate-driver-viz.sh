@@ -1,14 +1,15 @@
 #!/bin/sh
 # Validation + tests for the driver-viz TUI plugin (plugins/driver-viz).
-# Kept separate from scripts/validate.sh, which covers the agent/command/skill
-# declarations. Used by .github/workflows/release.yml; also runnable locally:
-#   ./scripts/validate-driver-viz.sh
+# Kept separate from this pack's scripts/validate.sh, which covers the
+# agent/command/skill declarations. Run via the root scripts/validate.sh dispatcher
+# (used by .github/workflows); also runnable directly:
+#   sh packs/opencode/scripts/validate-driver-viz.sh
 # Requires: sh, ruby (with psych/yaml + json stdlib), node >= 22.18 (TS logic tests).
 # Optional: bun (render snapshot tests in scripts/driver-viz-render-test/ — CI
 # installs it via setup-bun in test.yml; without bun that section skips).
 # (shellcheck itself is optional — skipped if absent)
 set -eu
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/.."   # -> packs/opencode
 
 if command -v shellcheck >/dev/null 2>&1; then
   shellcheck scripts/validate-driver-viz.sh

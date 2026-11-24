@@ -312,7 +312,8 @@ Both phases use the SAME rule, and `verdict` stays a two-value enum (`pass` | `f
 
 ## 8. Agent scripts (installed payload — the mechanism behind §1 state writes, §2 spec.md/attachments persistence (G-23) and §7.1 forge detection)
 
-`install.sh` ships the repo's `agent-scripts/` directory into the config dir, so every phase
+The repo-root `install.sh` composes the pack's `shared/agent-scripts/` directory into the
+config dir at install time (see `packs/opencode/pack.conf` `PACK_COMPOSE`), so every phase
 addresses the scripts at the INSTALLED path — never the repo path:
 
 ```sh
@@ -322,7 +323,8 @@ SCRIPTS="${XDG_CONFIG_HOME:-$HOME/.config}/opencode/agent-scripts"
 If `"$SCRIPTS/detect-forge.sh"` / `"$SCRIPTS/driver-state.py"` /
 `"$SCRIPTS/save-linear-attachments.py"` / `"$SCRIPTS/qa-command.sh"` is missing or not
 executable, stop with a clear "agent-scripts not installed — re-run install.sh" error.
-Prerequisites: POSIX sh, git, python3 — `install.sh` hard-fails without python3/git.
+Prerequisites: POSIX sh, git, python3 — `install.sh` hard-fails without python3/git
+(`PACK_PREREQS` in the pack's `pack.conf`).
 
 - **`detect-forge.sh`** — forge detection. §7.1 stays the SEMANTICS (the contract); this
   script is the MECHANISM. Invocation:

@@ -4,7 +4,8 @@
 // every module shares ONE solid-js client instance (two instances = "No renderer
 // found" from createElement). Run with: bun --preload ./preload.ts run.ts
 //
-// resolvePath: the plugin sources live in ../../plugins/driver-viz/, which has no
+// resolvePath: the plugin sources live in ../../plugins/driver-viz/ (relative to this
+// pack-local scripts/ dir), which has no
 // node_modules of its own — bare imports there would resolve elsewhere (bun global
 // cache) and create duplicate module instances. Rewrite them to absolute paths in
 // THIS harness's node_modules. "solid-js" maps to the server.js path on purpose:

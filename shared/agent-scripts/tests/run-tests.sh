@@ -1,7 +1,7 @@
 #!/bin/sh
 # Runs the agent-scripts unit suites plus syntax checks for all scripts.
 # Hard prerequisites (fail loudly when absent): POSIX sh, git, python3.
-# Usage (from the repo root): sh agent-scripts/tests/run-tests.sh
+# Usage (from the repo root): sh shared/agent-scripts/tests/run-tests.sh
 set -eu
 
 HERE=$(cd "$(dirname "$0")" && pwd)
