@@ -220,6 +220,17 @@ jobs:
           test -f "$t/cfg-vibe/agent-packs.vibe-acp.manifest"
           test ! -e "$t/cfg-vibe/snippets"
           sh install.sh --release --list | grep -q 'vibe-acp'
+          # the vibe-skills pack ships its skills/ payload (pack.conf + skills/; scripts/ + docs/ stripped)
+          diff -r --exclude=.agent --exclude=__pycache__ "$t/agent-packs/packs/vibe-skills/skills" packs/vibe-skills/skills
+          test -f "$t/agent-packs/packs/vibe-skills/pack.conf"
+          test ! -e "$t/agent-packs/packs/vibe-skills/scripts"
+          test ! -e "$t/agent-packs/packs/vibe-skills/docs"
+          # vibe-skills installs from the release payload into a throwaway Vibe home
+          sh install.sh --release --dest "$t/cfg-vibe-skills" vibe-skills >/dev/null
+          test -f "$t/cfg-vibe-skills/skills/manage-vibe-skills/SKILL.md"
+          test -f "$t/cfg-vibe-skills/agent-packs.vibe-skills.manifest"
+          test ! -e "$t/cfg-vibe-skills/scripts"
+          sh install.sh --release --list | grep -q 'vibe-skills'
           diff -r --exclude=.agent --exclude=__pycache__ "$t/agent-packs/packs/opencode/agent-scripts" packs/opencode/agent-scripts
           diff -r --exclude=.agent --exclude=__pycache__ "$t/agent-packs/packs/opencode/skills/driver-conventions" packs/opencode/skills/driver-conventions
           # full installer path: download payload, verify checksum, install into temp dir

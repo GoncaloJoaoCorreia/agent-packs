@@ -15,6 +15,7 @@ A personal library of agent-harness extensions — **packs**. Each pack under
 |---|---|---|---|
 | [`opencode`](packs/opencode/) | [OpenCode v2](https://opencode.ai/v2/docs/) | The **driver** — `/driver` runs an entire feature cycle as coordinated subagents — plus **driver-viz**, a TUI sidebar plugin showing the live phase flow chart | [packs/opencode/README.md](packs/opencode/README.md) |
 | [`vibe-acp`](packs/vibe-acp/) | [OpenCode v2](https://opencode.ai/v2/docs/) | **Mistral Vibe as an OpenCode provider** — drives `vibe-acp` over ACP (no OpenCode fork): the `vibe/<model>` provider appears in `/models` automatically, `/connect` offers "Sign in with Vibe CLI" | [packs/vibe-acp/README.md](packs/vibe-acp/README.md) |
+| [`vibe-skills`](packs/vibe-skills/) | [Mistral Vibe CLI](https://github.com/mistralai/mistral-vibe) | A repo of Agent Skills (`SKILL.md`) installed as user-level skills in `${VIBE_HOME:-~/.vibe}/skills/` — the single source of truth, publishable to the cloud Vibe registry (Vibe Work / cloud sessions) | [packs/vibe-skills/README.md](packs/vibe-skills/README.md) |
 
 More harnesses can be added as new packs — see
 [AGENTS.md](AGENTS.md) → "Adding a pack".
