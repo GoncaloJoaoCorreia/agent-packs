@@ -46,7 +46,9 @@ Date: 2026-11-24. Client under test: Mistral Vibe CLI **3.1.4** (`vibe` / `vibe-
 - Setting model/effort: **`session/set_config_option { sessionId, configId: "model" | "thinking", value }`**
   (standard ACP method; the response echoes all `configOptions`). There is no `session/set_model`
   extension method in vibe (that was `agy`). Only send it when the selection changed.
-- `session/set_session_mode { sessionId, modeId }` exists and works (set to `ask` in spike 2).
+- `session/set_mode { sessionId, modeId }` exists and works (set to `ask` in spike 2). **Wire name
+  is `session/set_mode`** — `session/set_session_mode` is rejected with `-32601 Method not found`
+  (the TS SDK's `setSessionMode()` uses the right name; watch out when hand-rolling).
 
 ## Turns: prompt, updates, stop reasons, usage, cancel
 
