@@ -148,9 +148,9 @@ jobs:
           # Compose that old-layout tarball from the new packs/ + shared/ layout.
           # SHA256SUMS must list ONLY the legacy asset — the old installer runs
           # `sha256sum -c SHA256SUMS` with just that file downloaded.
-          mkdir -p "$stage_root/opencode-agents"
+          mkdir -p "$stage_root/opencode-agents/skills"
           cp -RL packs/opencode/agents packs/opencode/commands packs/opencode/plugins packs/opencode/snippets install.sh LICENSE "$stage_root/opencode-agents/"
-          cp -RL shared/driver-conventions "$stage_root/opencode-agents/skills"
+          cp -RL shared/driver-conventions "$stage_root/opencode-agents/skills/"
           cp -RL shared/agent-scripts "$stage_root/opencode-agents/agent-scripts"
           find "$stage_root/opencode-agents" -type d \( -name .agent -o -name __pycache__ -o -name node_modules \) -prune -exec rm -rf {} +
           tar -czf opencode-agents.tar.gz -C "$stage_root" opencode-agents
@@ -193,8 +193,9 @@ jobs:
           fi
           # the legacy alias must be the OLD layout (top-level opencode-agents/ with
           # agents/ commands/ skills/ agent-scripts/ plugins/) for pre-rename installers
+          tar -tzf "$t/opencode-agents.tar.gz" > "$t/legacy-list"
           for f in agents/driver.md commands/driver.md skills/driver-conventions/SKILL.md agent-scripts/driver-state.py plugins/driver-viz/tui.tsx; do
-            tar -tzf "$t/opencode-agents.tar.gz" | grep -qx "opencode-agents/$f" || { echo "FAIL: legacy tarball missing opencode-agents/$f" >&2; exit 1; }
+            grep -qxF "opencode-agents/$f" "$t/legacy-list" || { echo "FAIL: legacy tarball missing opencode-agents/$f" >&2; exit 1; }
           done
           tar -xzf "$t/agent-packs.tar.gz" -C "$t"
           # installed payload must match the checkout (payload dirs + composed shared/)
