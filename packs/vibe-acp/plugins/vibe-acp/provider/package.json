@@ -1,0 +1,17 @@
+{
+  "name": "@agent-packs/vibe-acp-provider",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "OpenCode provider runtime for Mistral Vibe over ACP: drives the `vibe-acp` binary (Agent Client Protocol over stdio) and exposes it as an AI SDK language model. Loaded via `providers.vibe.package = \"aisdk:file://<this dir>\"`.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "node --test test/*.test.ts",
+    "test:e2e": "VIBE_ACP_E2E=1 node --test test/e2e-real.test.ts"
+  },
+  "dependencies": {
+    "@ai-sdk/provider": "latest"
+  }
+}
