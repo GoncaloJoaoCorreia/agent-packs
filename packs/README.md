@@ -52,11 +52,13 @@ Optional hooks (functions defined in `pack.conf`, called by the installer):
 
 ## Release payload
 
-Each GitHub release carries one `agent-packs.tar.gz` (top-level `agent-packs/` dir with
-`packs/ shared/ install.sh LICENSE`) plus `SHA256SUMS`. The release workflow strips
-`packs/*/scripts/`, `packs/*/docs/`, pack-level `README.md`/`AGENTS.md`, any `node_modules/`,
-`.agent/` and `__pycache__/` from the payload. The installer downloads the tarball, verifies
-the checksum, and installs only the selected packs.
+Each GitHub release carries `agent-packs.tar.gz` (top-level `agent-packs/` dir with
+`packs/ shared/ install.sh LICENSE`) plus `agent-packs.tar.gz.sha256`. The release workflow
+strips `packs/*/scripts/`, `packs/*/docs/`, pack-level `README.md`/`AGENTS.md`, plus any
+`node_modules/`, `.agent/` and `__pycache__/` from the payload (`packs/README.md`, the pack
+contract, ships on purpose). The installer downloads the tarball, verifies the checksum,
+and installs only the selected packs. The release also carries a legacy
+`opencode-agents.tar.gz` (old flat layout) + `SHA256SUMS` for pre-rename installers.
 
 ## Adding a pack
 

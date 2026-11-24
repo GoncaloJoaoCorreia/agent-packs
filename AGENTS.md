@@ -51,12 +51,14 @@ scripts/
   requires `python3` and `git` — the shipped `shared/agent-scripts/` need both); the
   installer hard-fails with a clear message before touching any config dir. Optional
   tools (a forge CLI `gh`/`glab`/`forgejo-cli`, `shellcheck`) only produce a warning.
-- **Release assets convention:** each GitHub release carries exactly `agent-packs.tar.gz`
-  (one top-level `agent-packs/` dir with `packs/ shared/ install.sh LICENSE`) and
-  `SHA256SUMS` (sha256sum format). The installer fetches them unauthenticated from
-  `releases/latest/download/` (the repo is public). **Releases are cut by the Release
-  workflow (see Releases below), which builds and uploads these assets** — don't
-  hand-upload them.
+- **Release assets convention:** each GitHub release carries `agent-packs.tar.gz` +
+  `agent-packs.tar.gz.sha256` (one top-level `agent-packs/` dir with `packs/ shared/
+  install.sh LICENSE`; the installer fetches them unauthenticated from
+  `releases/latest/download/` — the repo is public), plus a **legacy alias**
+  `opencode-agents.tar.gz` (old flat layout) + `SHA256SUMS` listing only that legacy
+  asset, so pre-rename installers still served from the old raw URL keep working.
+  **Releases are cut by the Release workflow (see Releases below), which builds and
+  uploads these assets** — don't hand-upload them.
 - The release workflow strips repo-only files from the payload: `packs/*/scripts/`,
   `packs/*/docs/`, pack-level `README.md`/`AGENTS.md`, plus any `node_modules/`, `.agent/`
   and `__pycache__/` anywhere. The installer additionally strips `.agent/`/`__pycache__/`

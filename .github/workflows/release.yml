@@ -5,11 +5,14 @@ name: release
 #      pack.conf sanity, shared agent-scripts tests, every pack's validators)
 #   2. compute the tag (auto patch-bump from latest v* tag, or the `version` input)
 #   3. tag + push main
-#   4. build agent-packs.tar.gz + SHA256SUMS (the installer's asset convention: one
-#      top-level agent-packs/ dir with packs/ shared/ install.sh LICENSE)
+#   4. build agent-packs.tar.gz + agent-packs.tar.gz.sha256 (the installer's asset
+#      convention: one top-level agent-packs/ dir with packs/ shared/ install.sh
+#      LICENSE), plus a legacy opencode-agents.tar.gz (old layout) + SHA256SUMS so
+#      pre-rename installers still served from the old raw URL keep working
 #   5. create the GitHub release with an auto changelog
-#   6. self-test: download the new release, verify checksum, diff against checkout,
-#      and run install.sh --release into a temp dir
+#   6. self-test: download the new release, verify checksums, diff against checkout,
+#      run install.sh --release into a temp dir, and run the PREVIOUS tag's
+#      install.sh against the legacy assets
 on:
   workflow_dispatch:
     inputs:
@@ -124,7 +127,7 @@ jobs:
           # -L dereferences symlinked placeholder agents (plan-thorough.md)
           cp -RL packs shared install.sh LICENSE "$stage_root/agent-packs/"
           # strip repo-only dev files from every pack: scripts/, docs/, pack-level
-          # README.md/AGENTS.md (the payload ships pack.conf + payload dirs only)
+          # README.md/AGENTS.md (the payload ships packs/README.md + pack.conf + payload dirs)
           find "$stage_root/agent-packs/packs" -mindepth 2 -maxdepth 2 \
             \( -name scripts -o -name docs -o -name README.md -o -name AGENTS.md \) \
             -prune -exec rm -rf {} +
@@ -134,9 +137,26 @@ jobs:
           # agents ("agents/.agent/history" etc.)
           find "$stage_root/agent-packs" -type d \( -name .agent -o -name __pycache__ -o -name node_modules \) -prune -exec rm -rf {} +
           tar -czf agent-packs.tar.gz -C "$stage_root" agent-packs
-          sha256sum agent-packs.tar.gz > SHA256SUMS
-          cat SHA256SUMS
+          sha256sum agent-packs.tar.gz > agent-packs.tar.gz.sha256
+          cat agent-packs.tar.gz.sha256
           echo "artifacts: $(tar -tzf agent-packs.tar.gz | wc -l) files"
+
+          # Legacy alias for pre-rename installers: the old raw URL
+          # (…/opencode-agents/main/install.sh) can still serve the OLD install.sh,
+          # which downloads opencode-agents.tar.gz + SHA256SUMS and expects a top-level
+          # opencode-agents/ dir with agents/ commands/ skills/ agent-scripts/ plugins/.
+          # Compose that old-layout tarball from the new packs/ + shared/ layout.
+          # SHA256SUMS must list ONLY the legacy asset — the old installer runs
+          # `sha256sum -c SHA256SUMS` with just that file downloaded.
+          mkdir -p "$stage_root/opencode-agents"
+          cp -RL packs/opencode/agents packs/opencode/commands packs/opencode/plugins packs/opencode/snippets install.sh LICENSE "$stage_root/opencode-agents/"
+          cp -RL shared/driver-conventions "$stage_root/opencode-agents/skills"
+          cp -RL shared/agent-scripts "$stage_root/opencode-agents/agent-scripts"
+          find "$stage_root/opencode-agents" -type d \( -name .agent -o -name __pycache__ -o -name node_modules \) -prune -exec rm -rf {} +
+          tar -czf opencode-agents.tar.gz -C "$stage_root" opencode-agents
+          sha256sum opencode-agents.tar.gz > SHA256SUMS
+          cat SHA256SUMS
+          echo "legacy artifacts: $(tar -tzf opencode-agents.tar.gz | wc -l) files"
 
       - name: Create GitHub release
         run: |
@@ -150,7 +170,7 @@ jobs:
             header="All changes"
             body=$(git log --oneline)
           fi
-          gh release create "$tag" agent-packs.tar.gz SHA256SUMS \
+          gh release create "$tag" agent-packs.tar.gz agent-packs.tar.gz.sha256 opencode-agents.tar.gz SHA256SUMS \
             --title "$tag" \
             --notes "## $header"$'\n\n'"$body"
           echo "created release $tag"
@@ -159,9 +179,10 @@ jobs:
         run: |
           set -eu
           tag="${{ steps.tag.outputs.tag }}"
+          latest="${{ steps.version.outputs.latest }}"
           t=$(mktemp -d)
-          gh release download "$tag" --dir "$t" --pattern agent-packs.tar.gz --pattern SHA256SUMS
-          (cd "$t" && sha256sum -c SHA256SUMS)
+          gh release download "$tag" --dir "$t" --pattern '*.tar.gz' --pattern '*.sha256' --pattern SHA256SUMS
+          (cd "$t" && sha256sum -c agent-packs.tar.gz.sha256 && sha256sum -c SHA256SUMS)
           # the payload must not carry repo-only pack dev files or bytecode dirs
           # (patterns anchored with (^|/) so the top-level "agent-packs/" dir name
           # itself cannot match; packs/README.md — the pack contract — ships on purpose)
@@ -170,6 +191,11 @@ jobs:
             tar -tzf "$t/agent-packs.tar.gz" | grep -E '(^|/)packs/[^/]+/(scripts|docs)/|node_modules|(^|/)(\.agent|__pycache__)/|(^|/)packs/[^/]+/(README|AGENTS)\.md' >&2
             exit 1
           fi
+          # the legacy alias must be the OLD layout (top-level opencode-agents/ with
+          # agents/ commands/ skills/ agent-scripts/ plugins/) for pre-rename installers
+          for f in agents/driver.md commands/driver.md skills/driver-conventions/SKILL.md agent-scripts/driver-state.py plugins/driver-viz/tui.tsx; do
+            tar -tzf "$t/opencode-agents.tar.gz" | grep -qx "opencode-agents/$f" || { echo "FAIL: legacy tarball missing opencode-agents/$f" >&2; exit 1; }
+          done
           tar -xzf "$t/agent-packs.tar.gz" -C "$t"
           # installed payload must match the checkout (payload dirs + composed shared/)
           diff -r --exclude=.agent --exclude=__pycache__ "$t/agent-packs/packs/opencode/agents" packs/opencode/agents
@@ -206,4 +232,16 @@ jobs:
           test ! -e "$t/cfg/agents/gone.md"
           test ! -e "$t/cfg/opencode-agents.manifest"
           test ! -e "$t/cfg/opencode-agents.version"
+          # legacy path: the PRE-RENAME install.sh (from the previous tag) must still
+          # work end-to-end via the old repo name (release URLs redirect) + legacy asset
+          if [ "$latest" != "none" ]; then
+            git show "${latest}:install.sh" > "$t/old-install.sh"
+            sh "$t/old-install.sh" --release --dest "$t/cfg-old" >/dev/null
+            test -f "$t/cfg-old/agents/driver.md"
+            test -f "$t/cfg-old/skills/driver-conventions/SKILL.md"
+            test -f "$t/cfg-old/agent-scripts/driver-state.py"
+            test -f "$t/cfg-old/opencode-agents.manifest"
+            test -f "$t/cfg-old/opencode-agents.version"
+            echo "legacy pre-rename installer (tag $latest) still installs from the $tag assets"
+          fi
           echo "self-test OK: release $tag verifies and installs"

@@ -5,8 +5,9 @@
 #           so it installs by COPYING from the checkout. Nothing is built or compiled.
 #
 #   release (standalone, e.g. `curl -fsSL <raw-url>/install.sh | sh`): downloads the
-#           latest GitHub release payload (agent-packs.tar.gz + SHA256SUMS from
-#           releases/latest/download/), verifies the checksum, and installs from that.
+#           latest GitHub release payload (agent-packs.tar.gz + its .sha256 checksum from
+#           releases/latest/download/; falls back to SHA256SUMS), verifies the checksum,
+#           and installs from that.
 #
 # Usage: install.sh [PACK ...] [--source|--release] [--dest DIR] [--no-plugin] [--list] [-h|--help]
 #
@@ -74,7 +75,9 @@ Usage: install.sh [PACK ...] [--source|--release] [--dest DIR] [--no-plugin] [--
   --dest DIR  install target (single pack only; default: the pack's PACK_DEFAULT_DEST)
   --no-plugin skip each pack's plugins/ payload dir
 
-Release payload: ${TARBALL} + SHA256SUMS from releases/latest/download/.
+Release payload: ${TARBALL} + ${TARBALL}.sha256 from releases/latest/download/
+(the release also carries a legacy opencode-agents.tar.gz + SHA256SUMS for pre-rename
+installers still served from the old raw URL — this script ignores them).
 EOF
 }
 
@@ -122,8 +125,7 @@ if [ "$MODE" = "release" ]; then
   TMP=$(mktemp -d)
   trap 'rm -rf "$TMP"' EXIT INT TERM
   # Public repo: the plain download URLs work unauthenticated — no gh/token needed.
-  if ! curl -fsSL "$RELEASE_BASE/$TARBALL" -o "$TMP/$TARBALL" 2>/dev/null \
-     || ! curl -fsSL "$RELEASE_BASE/SHA256SUMS" -o "$TMP/SHA256SUMS" 2>/dev/null; then
+  if ! curl -fsSL "$RELEASE_BASE/$TARBALL" -o "$TMP/$TARBALL" 2>/dev/null; then
     echo "install.sh: could not download the latest release payload from $RELEASE_BASE" >&2
     echo "  (no release published yet, or a network problem) — see https://github.com/$REPO/releases" >&2
     exit 1
@@ -132,8 +134,19 @@ if [ "$MODE" = "release" ]; then
   version=$(curl -fsSL "$API_LATEST" 2>/dev/null | sed -n 's/.*"tag_name": *"\([^"]*\)".*/\1/p' | head -n 1)
   [ -n "$version" ] || version="latest"
   echo "verifying checksum"
+  # prefer the dedicated <tarball>.sha256; fall back to the release's SHA256SUMS
+  # (older releases only carry that, listing just the main tarball)
+  if curl -fsSL "$RELEASE_BASE/$TARBALL.sha256" -o "$TMP/$TARBALL.sha256" 2>/dev/null; then
+    :
+  elif curl -fsSL "$RELEASE_BASE/SHA256SUMS" -o "$TMP/SHA256SUMS" 2>/dev/null \
+     && grep -F "$TARBALL" "$TMP/SHA256SUMS" > "$TMP/$TARBALL.sha256"; then
+    :
+  else
+    echo "install.sh: could not download a checksum for $TARBALL from $RELEASE_BASE" >&2
+    exit 1
+  fi
   # shellcheck disable=SC2086  # SHA_CHECK intentionally unquoted (two words)
-  if ! (cd "$TMP" && $SHA_CHECK SHA256SUMS); then
+  if ! (cd "$TMP" && $SHA_CHECK "$TARBALL.sha256"); then
     echo "install.sh: checksum verification FAILED — refusing to install" >&2
     exit 1
   fi
