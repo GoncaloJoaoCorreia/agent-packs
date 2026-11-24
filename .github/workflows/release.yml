@@ -205,6 +205,17 @@ jobs:
           diff -r --exclude=.agent --exclude=__pycache__ "$t/agent-packs/packs/opencode/commands" packs/opencode/commands
           diff -r --exclude=.agent --exclude=__pycache__ "$t/agent-packs/packs/opencode/plugins" packs/opencode/plugins
           diff -r --exclude=.agent --exclude=__pycache__ "$t/agent-packs/packs/opencode/snippets" packs/opencode/snippets
+          # the vibe-acp pack ships its payload (pack.conf + plugins/ + snippets/)
+          diff -r --exclude=.agent --exclude=__pycache__ "$t/agent-packs/packs/vibe-acp/plugins" packs/vibe-acp/plugins
+          diff -r --exclude=.agent --exclude=__pycache__ "$t/agent-packs/packs/vibe-acp/snippets" packs/vibe-acp/snippets
+          test -f "$t/agent-packs/packs/vibe-acp/pack.conf"
+          # vibe-acp installs from the release payload into a throwaway config dir
+          sh install.sh --release --dest "$t/cfg-vibe" vibe-acp >/dev/null
+          test -f "$t/cfg-vibe/plugins/vibe-acp/index.ts"
+          test -f "$t/cfg-vibe/plugins/vibe-acp/provider/src/index.ts"
+          test -f "$t/cfg-vibe/agent-packs.vibe-acp.manifest"
+          test ! -e "$t/cfg-vibe/snippets"
+          sh install.sh --release --list | grep -q 'vibe-acp'
           diff -r --exclude=.agent --exclude=__pycache__ "$t/agent-packs/shared/agent-scripts" shared/agent-scripts
           diff -r --exclude=.agent --exclude=__pycache__ "$t/agent-packs/shared/driver-conventions" shared/driver-conventions
           # full installer path: download payload, verify checksum, install into temp dir

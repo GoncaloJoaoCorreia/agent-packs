@@ -4,7 +4,9 @@
 // replaced on the next turn. Permission requests are answered from the tracked tool call via
 // the `assert` hook (wired to OpenCode's permission rules by the plugin), defaulting to refuse.
 
-import { AcpClient, choose, refuse, type AcpClientOptions, type AcpSessionInfo } from "./client.ts"
+import { choose, refuse, type AcpSessionInfo } from "./protocol.ts"
+import type { AcpClientOptions } from "./client.ts"
+
 import type {
   DiscoveredCatalog,
   DiscoveredModel,
@@ -160,7 +162,9 @@ export class SessionManager {
         }
       },
     }
-    const started = (this.options.connect ?? ((o) => AcpClient.start(o)))(options)
+    // The process-spawning client is imported lazily: on runtimes without child processes
+    // (workerd/console) the pack stays loaded and simply cannot spawn the CLI.
+    const started = (this.options.connect ?? (async (o) => (await import("./client.ts")).AcpClient.start(o)))(options)
     this.client = started
     started.then(
       (client) => client.closed.then(() => this.forget(started)),

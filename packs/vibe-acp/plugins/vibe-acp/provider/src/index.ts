@@ -84,6 +84,7 @@ export async function removeSession(sessionID: string): Promise<void> {
 export { SessionManager } from "./sessions.ts"
 export { VibeAcpLanguageModel, SESSION_HEADER, AGENT_HEADER, KIND_HEADER } from "./language-model.ts"
 export { AcpClient } from "./client.ts"
+export { catalogOf, choose, refuse } from "./protocol.ts"
 export { makeRenderer, finishReason, usageOf } from "./renderer.ts"
 export { ACTIONS, toPermission } from "./permissions.ts"
 export type { DiscoveredCatalog, DiscoveredModel } from "./acp.ts"

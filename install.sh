@@ -212,14 +212,18 @@ load_pack() { # $1 = pack name — sources pack.conf and validates the required 
   return 0
 }
 
-ALL_PACKS=$(list_pack_names)
+# space-separated word list (a newline-separated list breaks the " $ALL_PACKS " membership
+# test below once more than one pack exists)
+ALL_PACKS=$(list_pack_names | tr '\n' ' ')
 if [ -z "$ALL_PACKS" ]; then
   echo "install.sh: no packs found (no packs/*/pack.conf under $ROOT)" >&2
   exit 1
 fi
 
-DEFAULT_PACK=$(printf '%s\n' "$ALL_PACKS" | head -n 1)
-if printf '%s\n' "$ALL_PACKS" | grep -qx opencode; then
+# shellcheck disable=SC2086  # $ALL_PACKS is an intentional word list
+DEFAULT_PACK=$(printf '%s\n' $ALL_PACKS | head -n 1)
+# shellcheck disable=SC2086
+if printf '%s\n' $ALL_PACKS | grep -qx opencode; then
   DEFAULT_PACK="opencode"
 fi
 

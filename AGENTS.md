@@ -2,8 +2,10 @@
 
 Personal library of agent-harness extensions (**packs**): one self-contained pack per
 harness under `packs/<name>/`, plus harness-agnostic shared code under `shared/`.
-Currently ships one pack: **opencode** (`packs/opencode/`) — the **driver**
-(`/driver`, a multi-phase feature-cycle orchestrator) and the **driver-viz** TUI plugin.
+Currently ships two packs: **opencode** (`packs/opencode/`) — the **driver**
+(`/driver`, a multi-phase feature-cycle orchestrator) and the **driver-viz** TUI plugin — and
+**vibe-acp** (`packs/vibe-acp/`) — Mistral Vibe (`vibe-acp` over ACP) as an OpenCode
+`vibe/<model>` provider, no OpenCode fork.
 There is no build or lint at the repo level; each pack may carry its own validation under
 `packs/<name>/scripts/` (the root `scripts/validate.sh` dispatcher runs all of them).
 Tests + validation run in CI on every PR (`.github/workflows/test.yml`).
