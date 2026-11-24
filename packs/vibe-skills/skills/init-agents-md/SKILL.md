@@ -1,15 +1,35 @@
 ---
 name: init-agents-md
-description: Initialize or update a repository's AGENTS.md with the user's personal development preferences — inspect the repo, ask a short set of preference questions, then write a concise AGENTS.md at the repo root. Use when the user wants to set up, create, or refresh AGENTS.md in a project.
+description: Initialize or update a repository's AGENTS.md — preloaded with the user's personal preferences (no inline comments ever, conventional commits without PR number, clarify-before-assuming, approval-first boundaries); inspects the repo, then writes a concise AGENTS.md at the repo root. Use when the user wants to set up, create, or refresh AGENTS.md in a project.
 license: Unlicense
-compatibility: Requires a git repository; run from the repo root. Interactive (asks the user questions).
+compatibility: Requires a git repository; run from the repo root. Interactive (asks before overwriting / adjusting preferences).
 user-invocable: true
 ---
 
 # Init AGENTS.md
 
-Create or refresh the root `AGENTS.md` of the current repository so it encodes the
-user's personal development preferences alongside repo-specific facts.
+Create or refresh the root `AGENTS.md` of the current repository. The user's personal
+preferences are **preloaded below** — write them into the file verbatim unless the user
+adjusts them for this repo; never re-ask each preference one by one.
+
+## Preloaded personal preferences
+
+Write this block (adjusted only if the user says so) as the `## Personal preferences`
+section of the AGENTS.md:
+
+```md
+## Personal preferences
+
+- Code comments: no inline comments, ever. Javadoc-style comments are allowed only
+  for interface contract declarations, and only if needed.
+- Commits: conventional commits — `type(scope): subject`, imperative mood, no PR
+  number in the message.
+- When a request is ambiguous, ask one short clarifying question before assuming.
+- Ask for explicit approval before: destructive git operations (`reset --hard`,
+  `clean -fd`, `branch -D`, ...), non-local database writes (migrations, deletes,
+  anything but a local dev database), and deploys / package publishing /
+  customer-visible notifications.
+```
 
 ## Workflow
 
@@ -17,31 +37,26 @@ user's personal development preferences alongside repo-specific facts.
    `AGENTS.md` already exists there. If it does, read it first and ask the user
    whether to replace it, merge into it, or abort.
 2. **Inspect the repo** (read-only) to ground the file in facts — do not guess:
-   primary language(s), package manager + lockfile, test runner and how tests are
-   run, linter/formatter and their commands, CI workflows, existing
-   `CONTRIBUTING.md` / README conventions, and the commit style from `git log`
-   (e.g. conventional commits, imperative mood).
-3. **Ask the user their personal preferences** in a short batch of questions; skip
-   anything they don't care about:
-   - Communication: terse or detailed? Any wording or formatting to avoid?
-   - Code style: naming conventions, comments policy, error handling, preferred
-     patterns or libraries?
-   - Workflow: always run tests/lint before finishing? Commit message style? PR and
-     changelog conventions?
-   - Boundaries: operations to always ask about first (force-push, migrations,
-     production deploys, deleting files, publishing)?
-   - Anything else they always want done, or never done?
-4. **Write `AGENTS.md`** at the repo root — concise, factual, imperative. Suggested
-   sections: **Repo** (stack + build/test/lint commands), **Personal preferences**
-   (from step 3), **Workflow** (test/commit/PR rules), **Boundaries** (ask-first
-   list). Keep it under ~100 lines; link to larger docs instead of inlining them.
-5. **Verify**: re-read the written file, confirm it matches what the user answered,
-   and summarize what was written and where.
+   primary language(s), package manager + lockfile, test runner and commands,
+   linter/formatter, CI workflows, existing `CONTRIBUTING.md` / README conventions,
+   and the commit style from `git log`.
+3. **Ask one question**: "Use the preloaded personal preferences as-is for this
+   repo, or adjust them?" Apply the answer; if they adjust, change only what they
+   mention.
+4. **Write `AGENTS.md`** at the repo root — concise, factual, imperative. Sections:
+   **Repo** (stack + build/test/lint commands from step 2) and **Personal
+   preferences** (the preloaded block). Keep it under ~100 lines; link to
+   `CONTRIBUTING.md` or other docs instead of inlining them.
+5. **Verify**: re-read the written file, confirm the preloaded block is intact
+   (unless adjusted), and summarize what was written and where.
 
 ## Rules
 
+- The preloaded block above is the only source for personal preferences — never
+  invent or "improve" them, and do not add a communication-style or test/lint
+  verification policy (the user deliberately omits those).
 - AGENTS.md is instructions for agents, not a README: no marketing, no history.
-- Never invent preferences — if the user didn't answer something, omit it.
-- If the repo already has conventions (`CONTRIBUTING.md`, an existing `AGENTS.md`),
-  follow them and reference them instead of duplicating.
-- Ask before overwriting an existing `AGENTS.md`.
+- When writing any file (including AGENTS.md itself): no inline comments, ever —
+  Javadoc-style only for interface contract declarations, if needed.
+- Ask before overwriting an existing `AGENTS.md`; reference existing convention
+  docs instead of duplicating them.
