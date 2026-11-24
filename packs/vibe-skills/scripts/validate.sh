@@ -14,7 +14,7 @@ echo "== installer smoke test: install the pack into a throwaway dest =="
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 sh "$REPO/install.sh" --source --dest "$tmp/vibe-home" vibe-skills >/dev/null
-for f in skills/manage-vibe-skills/SKILL.md agent-packs.vibe-skills.manifest agent-packs.vibe-skills.version; do
+for f in skills/init-agents-md/SKILL.md agent-packs.vibe-skills.manifest agent-packs.vibe-skills.version; do
   [ -e "$tmp/vibe-home/$f" ] || { echo "FAIL: installed dest is missing $f" >&2; exit 1; }
 done
 # scripts/ and docs/ are repo-only: they must NOT be installed

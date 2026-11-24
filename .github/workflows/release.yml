@@ -251,7 +251,7 @@ jobs:
           test ! -e "$t/agent-packs/packs/vibe-skills/docs"
           # vibe-skills installs from the release payload into a throwaway Vibe home
           sh install.sh --release --dest "$t/cfg-vibe-skills" vibe-skills >/dev/null
-          test -f "$t/cfg-vibe-skills/skills/manage-vibe-skills/SKILL.md"
+          test -f "$t/cfg-vibe-skills/skills/init-agents-md/SKILL.md"
           test -f "$t/cfg-vibe-skills/agent-packs.vibe-skills.manifest"
           test ! -e "$t/cfg-vibe-skills/scripts"
           sh install.sh --release --list | grep -q 'vibe-skills'
