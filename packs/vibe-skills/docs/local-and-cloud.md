@@ -65,8 +65,16 @@ does and when to use it. `user-invocable: true` (default) exposes it as `/<name>
 `skills/<name>/` directory to a registry skill (SKILL.md body → `definition.body`,
 other files → `definition.assets`, frontmatter description → `definition.description`),
 creating the skill on first run and a **new version** on every change
-(idempotent via the API's `deduplicated` flag). The name → registry-id mapping is kept
-in `scripts/cloud-manifest.json` (repo-only, stripped from release payloads). Run:
+(idempotent via the API's `deduplicated` flag). Existing skills are found by name via
+the API (every published version carries the `agent-packs` alias), so the script works
+from a fresh checkout; `scripts/cloud-manifest.json` is only a local name → id cache
+(repo-only, stripped from release payloads).
+
+It runs **automatically in the manual Release workflow**
+(`.github/workflows/release.yml`, step "Publish vibe-skills to the cloud registry",
+before the tag is pushed; disable with the `publish_skills=false` input). The workflow
+needs the `MISTRAL_API_KEY` repository secret — without it the step is skipped with a
+warning. To publish by hand instead:
 
 ```sh
 MISTRAL_API_KEY=... python3 packs/vibe-skills/scripts/publish-to-cloud.py --apply
@@ -89,8 +97,9 @@ second editor.
    `scripts/validate.sh` in CI on every PR.
 2. **Local**: `./install.sh vibe-skills` (or `skill_paths` pointing at the checkout),
    then `/reload` in Vibe.
-3. **Cloud**: `publish-to-cloud.py --apply` on every release → workspace-shared registry
-   skills → **Publish to Vibe** in Studio → available in Vibe Work and cloud sessions.
+3. **Cloud**: the Release workflow runs `publish-to-cloud.py --apply` on every release
+   (or run it by hand) → workspace-shared registry skills → **Publish to Vibe** in
+   Studio → available in Vibe Work and cloud sessions.
    Optionally pin them back locally via the `/skills` Shared tab.
 
 ## Open questions / risks

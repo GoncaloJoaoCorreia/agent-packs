@@ -26,6 +26,10 @@ Without the installer, point `skill_paths` at the checkout in `~/.vibe/config.to
 
 ## Cloud publish
 
+Automated: the manual **Release** workflow (`release.yml`) runs
+`publish-to-cloud.py --apply` on every release (needs the `MISTRAL_API_KEY` repo
+secret; skip with the `publish_skills=false` workflow input). Manual fallback:
+
 ```sh
 MISTRAL_API_KEY=... python3 packs/vibe-skills/scripts/publish-to-cloud.py --apply
 # then in Studio: Share with workspace + "Publish to Vibe" per skill

@@ -32,7 +32,9 @@ Agent Skills format (`SKILL.md` + YAML frontmatter) that Vibe follows natively.
    pack's driver. Only this management skill may reference repo paths.
 3. After adding or editing a skill, from the repo root run `sh scripts/validate.sh`,
    then reinstall with `./install.sh vibe-skills` and `/reload` in Vibe.
-4. To update the cloud copy, run
+4. To update the cloud copy, the Release workflow runs
+   `publish-to-cloud.py --apply` automatically (needs the `MISTRAL_API_KEY` secret);
+   to publish by hand run
    `MISTRAL_API_KEY=... python3 packs/vibe-skills/scripts/publish-to-cloud.py --apply`
    (unchanged skills are skipped). Then in Studio open the skill, Share it with the
    workspace, and click **Publish to Vibe** so it appears in Vibe Work
