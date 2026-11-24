@@ -94,9 +94,10 @@ export class AcpClient {
     const connection = new JsonRpcConnection(transport)
     const routeUpdate = (params: unknown): void => {
       const p = params as SessionUpdateNotification
-      const listener = client?.listeners.get(p.sessionId)
-      if (listener) listener(p.update)
-      else options.onUpdate?.(p.sessionId, p.update)
+      // Always notify the default handler (the session manager tracks tool calls there for
+      // permission mapping), and the per-prompt listener when one is registered.
+      options.onUpdate?.(p.sessionId, p.update)
+      client?.listeners.get(p.sessionId)?.(p.update)
     }
     connection.onNotification("session/update", routeUpdate)
     let client: AcpClient | undefined
