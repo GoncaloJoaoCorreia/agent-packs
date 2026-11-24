@@ -76,6 +76,11 @@ export async function closeVibeAcp(): Promise<void> {
   await current?.close()
 }
 
+/** Closes the ACP session of a deleted OpenCode session. Called by the plugin's event hook. */
+export async function removeSession(sessionID: string): Promise<void> {
+  await manager?.remove(sessionID)
+}
+
 export { SessionManager } from "./sessions.ts"
 export { VibeAcpLanguageModel, SESSION_HEADER, AGENT_HEADER, KIND_HEADER } from "./language-model.ts"
 export { AcpClient } from "./client.ts"
