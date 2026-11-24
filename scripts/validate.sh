@@ -1,11 +1,11 @@
 #!/bin/sh
 # Repo-wide validation dispatcher for agent-packs.
-# Runs: root install.sh syntax, pack.conf sanity for every pack, the shared agent-scripts
-# test suite, then every pack's own scripts/validate*.sh (e.g. the opencode pack's
-# validate.sh + validate-driver-viz.sh).
+# Runs: root install.sh syntax, pack.conf sanity for every pack, the opencode pack's
+# agent-scripts test suite, then every pack's own scripts/validate*.sh (e.g. the opencode
+# pack's validate.sh + validate-driver-viz.sh).
 # Used by .github/workflows/test.yml and release.yml; also runnable locally:
 #   ./scripts/validate.sh
-# Requires: sh, python3, git (shared agent-scripts tests), ruby for the pack validators.
+# Requires: sh, python3, git (agent-scripts tests), ruby for the pack validators.
 # shellcheck is optional (skipped if absent).
 set -eu
 cd "$(dirname "$0")/.."
@@ -50,8 +50,8 @@ done
 [ "$fail" = "0" ] || { echo "FAIL: pack.conf sanity" >&2; exit 1; }
 echo "ok: all packs/*/pack.conf valid"
 
-echo "== shared agent-scripts tests =="
-sh shared/agent-scripts/tests/run-tests.sh
+echo "== opencode pack agent-scripts tests =="
+sh packs/opencode/agent-scripts/tests/run-tests.sh
 
 echo "== per-pack validators =="
 for v in packs/*/scripts/validate*.sh; do

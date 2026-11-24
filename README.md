@@ -37,7 +37,7 @@ install.sh --list        # just list the packs
 In a local checkout of this repo, run `./install.sh` instead — it installs straight from
 source (same copy-based install; nothing is built). Re-run it after pulling changes.
 
-Each release carries one `agent-packs.tar.gz` (containing `packs/` + `shared/` +
+Each release carries one `agent-packs.tar.gz` (containing `packs/` +
 `install.sh` + `LICENSE`) plus `SHA256SUMS`; the installer downloads it, verifies the
 checksum, and installs only the packs you selected. Installs are copy-based and write a
 per-pack `<prefix>.version` + `<prefix>.manifest` into the config dir, which drives
@@ -48,8 +48,7 @@ opencode pack (hard prerequisite — it fails with a clear message otherwise).
 
 ```
 install.sh            # self-contained installer: pack picker + per-pack install
-packs/<name>/         # one pack per harness (pack.conf + payload; scripts/ + docs/ are repo-only)
-shared/               # harness-agnostic code composed into packs at install time
+packs/<name>/         # one self-contained pack per harness (pack.conf + payload; scripts/ + docs/ are repo-only)
 scripts/validate.sh   # repo-wide validation dispatcher (CI + local)
 .github/workflows/    # test.yml (PRs), release.yml (manual releases)
 ```

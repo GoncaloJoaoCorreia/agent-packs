@@ -2,7 +2,7 @@ name: test
 
 # Runs on every PR to main (and on pushes to main):
 #   the full repo-wide validation ./scripts/validate.sh — root install.sh syntax,
-#   pack.conf sanity, the shared agent-scripts unit suite, and every pack's own
+#   pack.conf sanity, the opencode pack's agent-scripts unit suite, and every pack's own
 #   scripts/validate.sh (the opencode pack's covers agent/command/skill declarations
 #   + validate-driver-viz.sh incl. the agent-scripts unit suite).
 # Same commands as the manual release workflow (release.yml); setup mirrors it

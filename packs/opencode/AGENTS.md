@@ -22,11 +22,11 @@ plugin, both including the agent-scripts unit suite).
   **Re-run `./install.sh` after every edit here** — OpenCode reloads config
   automatically, no restart.
 - **Prerequisite check:** `pack.conf`'s `PACK_PREREQS` (here: `python3` + `git`) are
-  checked per tool before anything is installed — the shipped `shared/agent-scripts/`
+  checked per tool before anything is installed — the shipped `agent-scripts/`
   need both; the installer hard-fails with a clear message otherwise. Optional tools (a
   forge CLI `gh`/`glab`/`forgejo-cli`, `shellcheck`) only produce a warning when absent.
 - **Release assets convention:** each GitHub release carries exactly `agent-packs.tar.gz`
-  (one top-level `agent-packs/` dir with `packs/ shared/ install.sh LICENSE`; this pack
+  (one top-level `agent-packs/` dir with `packs/ install.sh LICENSE`; this pack
   ships as `packs/opencode/` with `pack.conf` + payload dirs, minus repo-only `scripts/`,
   `docs/`, `README.md`, `AGENTS.md`) and `SHA256SUMS` (sha256sum format). The installer
   fetches them unauthenticated from `releases/latest/download/` (the repo is public).
@@ -37,16 +37,15 @@ plugin, both including the agent-scripts unit suite).
   the manifest drives stale-file cleanup on reinstall, and the legacy pre-rename
   `opencode-agents.manifest` / `opencode-agents.version` are cleaned up once
   (`PACK_LEGACY_MANIFEST` / `PACK_LEGACY_CLEANUP`). Installs only touch the pack's
-  `PACK_PAYLOAD` dirs (`agents/ commands/ plugins/`; `plugins/` only without
-  `--no-plugin`) + the `PACK_COMPOSE` targets (`agent-scripts/`,
-  `skills/driver-conventions/`) + those two meta files. `snippets/` is ship-only.
+  `PACK_PAYLOAD` dirs (`agents/ commands/ plugins/ agent-scripts/ skills/`; `plugins/`
+  only without `--no-plugin`) + those two meta files. `snippets/` is ship-only.
 - **`.agent/` and `__pycache__/` inside the payload dirs are excluded** from the release
   tarball and the install (manifest list + `rm -rf` after the copy). OpenCode discovers
   `agents/**/*.md` recursively, so an installed `agents/.agent/*.md` would register as
   agents (`.agent/history`, `.agent/decisions`) — the driver no longer records history,
   so this is defense against legacy leftovers in old checkouts. The pack's
   `scripts/validate.sh` regression-tests the exclusion by planting a synthetic `.agent/`
-  fixture (in `agents/` and in `shared/driver-conventions/`), running `install.sh --source`
+  fixture (in `agents/` and in `skills/driver-conventions/`), running `install.sh --source`
   into a temp dir, and asserting it is not installed; release.yml's self-test asserts it on
   the downloaded payload. Re-running the installer also cleans previously installed copies
   via the manifest stale-file loop.
@@ -181,7 +180,7 @@ the OpenCode binary.
   new and greater than the latest tag); empty = auto patch-bump of the latest `v*` tag
   (`v0.1` normalizes to `v0.1.0` → next `v0.1.1`; no tags → `v0.1.0`).
 - The workflow: runs the root `./scripts/validate.sh` (install.sh syntax, pack.conf
-  sanity, shared agent-scripts tests, this pack's validators incl. driver-viz) → tags +
+  sanity, the agent-scripts tests, this pack's validators incl. driver-viz) → tags +
   pushes `main` → builds `agent-packs.tar.gz` + `SHA256SUMS` (the asset convention
   install.sh expects) → creates the GitHub release with an auto changelog → self-tests
   (download, checksum, payload hygiene, diff vs checkout, `install.sh --release` into a
@@ -193,9 +192,9 @@ the OpenCode binary.
 ## Contracts — one source of truth
 
 All file formats (`.plan/<slug>/state.json`, `manifest.json`, commit messages,
-slug/branch/worktree policy) are defined in `shared/driver-conventions/SKILL.md` (repo root; composed into
-`<config>/skills/driver-conventions/` at install time)
-with JSON schemas in `shared/driver-conventions/references/`. **If you change a format,
+slug/branch/worktree policy) are defined in `skills/driver-conventions/SKILL.md` (pack payload; installed as
+`<config>/skills/driver-conventions/`)
+with JSON schemas in `skills/driver-conventions/references/`. **If you change a format,
 update the schemas too**, and keep README.md's summary in sync.
 
 ## Extension points
@@ -207,18 +206,18 @@ update the schemas too**, and keep README.md's summary in sync.
   `plan-thorough.md` symlink with a real agent file (same output contract) when needed.
 - **New `/driver` flag**: parse it in section 1 of `agents/driver.md`, store in `state.params`.
 - **New forge support** (pr phase): extend the detection + cache contract and the per-forge
-  command table in `shared/driver-conventions/SKILL.md` §7, the dispatch in
+  command table in `skills/driver-conventions/SKILL.md` §7, the dispatch in
   `agents/driver/pr.md`, the detection step in `agents/driver/preplan.md`, and
   `state.remote` / `params.forge` / `state.pr.forge` in
-  `shared/driver-conventions/references/state.schema.json`. The detected forge is cached
+  `skills/driver-conventions/references/state.schema.json`. The detected forge is cached
   repo-locally in `git config driver.forge` (never committed).
-- **New agent-script**: add it under `shared/agent-scripts/` (repo root) with unit tests in
-  `shared/agent-scripts/tests/` (wired into `run-tests.sh`), and mirror it in the root
+- **New agent-script**: add it under `agent-scripts/` with unit tests in
+  `agent-scripts/tests/` (wired into `run-tests.sh`), and mirror it in the root
   `scripts/validate.sh` + `packs/opencode/scripts/validate.sh` (asset list + syntax/tests
-  sections), `.github/workflows/release.yml` (payload ships `shared/` wholesale; self-test
-  diffs it), plus README/AGENTS.md and an invocation/exit-code entry in
-  `shared/driver-conventions/SKILL.md` §8. `pack.conf`'s `PACK_COMPOSE` already covers the
-  install side.
+  sections), `.github/workflows/release.yml` (payload ships `agent-scripts/` as pack
+  payload; self-test diffs it), plus README/AGENTS.md and an invocation/exit-code entry in
+  `skills/driver-conventions/SKILL.md` §8. `pack.conf`'s `agent-scripts` payload dir
+  already covers the install side.
 
 ## Gotchas (hard-earned — do not rediscover)
 
