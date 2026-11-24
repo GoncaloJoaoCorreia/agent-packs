@@ -120,6 +120,38 @@ test("abort signal cancels the turn via session/cancel", async () => {
   })
 })
 
+test("updates reach both the default onUpdate (tool-call tracker) and the prompt listener", async () => {
+  // Regression: per-prompt listeners used to shadow the default onUpdate, so the session
+  // manager's tool-call tracker saw nothing and permission requests mapped to kind "other".
+  const cwd = mkdtempSync(join(tmpdir(), "vibe-acp-test-"))
+  try {
+    const tracked: string[] = []
+    const promptUpdates: string[] = []
+    const client = await AcpClient.start({
+      cwd,
+      command: process.execPath,
+      args: [fakeServer],
+      clientInfo: { name: "test", version: "0.0.0" },
+      onUpdate: (_sid, u) => tracked.push(u.sessionUpdate),
+    })
+    try {
+      const session = await client.newSession(cwd)
+      await client.prompt(session.sessionId, "go", (u) => promptUpdates.push(u.sessionUpdate))
+      assert.ok(tracked.includes("tool_call"), "default onUpdate saw the tool call")
+      assert.ok(promptUpdates.includes("tool_call"), "prompt listener saw the tool call")
+      assert.equal(
+        tracked.filter((k) => k === "tool_call").length,
+        promptUpdates.filter((k) => k === "tool_call").length,
+        "both handlers see every update",
+      )
+    } finally {
+      await client.close()
+    }
+  } finally {
+    rmSync(cwd, { recursive: true, force: true })
+  }
+})
+
 test("catalogOf reads models/thinking/modes from a session/new response", () => {
   const catalog = catalogOf({
     sessionId: "s",
