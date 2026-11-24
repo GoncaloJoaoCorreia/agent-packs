@@ -14,8 +14,9 @@ A personal library of agent-harness extensions — **packs**. Each pack under
 | Pack | Harness | What you get | Docs |
 |---|---|---|---|
 | [`opencode`](packs/opencode/) | [OpenCode v2](https://opencode.ai/v2/docs/) | The **driver** — `/driver` runs an entire feature cycle as coordinated subagents — plus **driver-viz**, a TUI sidebar plugin showing the live phase flow chart | [packs/opencode/README.md](packs/opencode/README.md) |
+| [`vibe-acp`](packs/vibe-acp/) | [OpenCode v2](https://opencode.ai/v2/docs/) | **Mistral Vibe as an OpenCode provider** — drives `vibe-acp` over ACP (no OpenCode fork): the `vibe/<model>` provider appears in `/models` automatically, `/connect` offers "Sign in with Vibe CLI" | [packs/vibe-acp/README.md](packs/vibe-acp/README.md) |
 
-More harnesses (e.g. Mistral Vibe) can be added as new packs — see
+More harnesses can be added as new packs — see
 [AGENTS.md](AGENTS.md) → "Adding a pack".
 
 ## Quick start

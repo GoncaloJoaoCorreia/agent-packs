@@ -2,8 +2,10 @@
 
 Personal library of agent-harness extensions (**packs**): one self-contained pack per
 harness under `packs/<name>/`, plus harness-agnostic shared code under `shared/`.
-Currently ships one pack: **opencode** (`packs/opencode/`) — the **driver**
-(`/driver`, a multi-phase feature-cycle orchestrator) and the **driver-viz** TUI plugin.
+Currently ships two packs: **opencode** (`packs/opencode/`) — the **driver**
+(`/driver`, a multi-phase feature-cycle orchestrator) and the **driver-viz** TUI plugin — and
+**vibe-acp** (`packs/vibe-acp/`) — Mistral Vibe (`vibe-acp` over ACP) as an OpenCode
+`vibe/<model>` provider, no OpenCode fork.
 There is no build or lint at the repo level; each pack may carry its own validation under
 `packs/<name>/scripts/` (the root `scripts/validate.sh` dispatcher runs all of them).
 Tests + validation run in CI on every PR (`.github/workflows/test.yml`).
@@ -60,9 +62,10 @@ scripts/
   **Releases are cut by the Release workflow (see Releases below), which builds and
   uploads these assets** — don't hand-upload them.
 - The release workflow strips repo-only files from the payload: `packs/*/scripts/`,
-  `packs/*/docs/`, pack-level `README.md`/`AGENTS.md`, plus any `node_modules/`, `.agent/`
-  and `__pycache__/` anywhere. The installer additionally strips `.agent/`/`__pycache__/`
-  from everything it copies and never lists them in the manifest.
+  `packs/*/docs/`, pack-level `README.md`/`AGENTS.md`, `test/` dirs under `packs/*/plugins/`,
+  plus any `node_modules/`, `.agent/` and `__pycache__/` anywhere. The installer additionally
+  strips `.agent/`/`__pycache__/` from everything it copies and never lists them in the
+  manifest.
 - Each pack install writes `<PACK_META_PREFIX>.version` + `<PACK_META_PREFIX>.manifest`
   into the pack's config dir; the manifest drives stale-file cleanup on reinstall
   (files listed there under the pack's managed dirs that no longer exist upstream are
