@@ -3,6 +3,9 @@
 [![test](https://github.com/GoncaloJoaoCorreia/agent-packs/actions/workflows/test.yml/badge.svg)](https://github.com/GoncaloJoaoCorreia/agent-packs/actions/workflows/test.yml)
 [![build](https://github.com/GoncaloJoaoCorreia/agent-packs/actions/workflows/release.yml/badge.svg)](https://github.com/GoncaloJoaoCorreia/agent-packs/actions/workflows/release.yml)
 [![release](https://img.shields.io/github/release/GoncaloJoaoCorreia/agent-packs?display_name=tag)](https://github.com/GoncaloJoaoCorreia/agent-packs/releases/latest)
+[![opencode](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fgithub.com%2FGoncaloJoaoCorreia%2Fagent-packs%2Freleases%2Flatest%2Fdownload%2Fmanifest.json&query=%24%5B%27packs%27%5D%5B%27opencode%27%5D%5B%27version%27%5D&label=opencode)](https://github.com/GoncaloJoaoCorreia/agent-packs/releases/latest)
+[![vibe-acp](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fgithub.com%2FGoncaloJoaoCorreia%2Fagent-packs%2Freleases%2Flatest%2Fdownload%2Fmanifest.json&query=%24%5B%27packs%27%5D%5B%27vibe-acp%27%5D%5B%27version%27%5D&label=vibe-acp)](https://github.com/GoncaloJoaoCorreia/agent-packs/releases/latest)
+[![vibe-skills](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fgithub.com%2FGoncaloJoaoCorreia%2Fagent-packs%2Freleases%2Flatest%2Fdownload%2Fmanifest.json&query=%24%5B%27packs%27%5D%5B%27vibe-skills%27%5D%5B%27version%27%5D&label=vibe-skills)](https://github.com/GoncaloJoaoCorreia/agent-packs/releases/latest)
 [![license](https://img.shields.io/badge/license-Unlicense-blue)](LICENSE)
 
 A personal library of agent-harness extensions — **packs**. Each pack under
