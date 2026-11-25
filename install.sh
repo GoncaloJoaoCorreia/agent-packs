@@ -1,5 +1,8 @@
 #!/bin/sh
-# agent-packs installer — one self-contained script, multiple harness packs.
+# agent-packs installer — ORCHESTRATOR. Each pack owns its install logic in
+# packs/<name>/install.sh (shared mechanics in scripts/install-lib.sh); this script
+# handles mode detection, pack discovery/selection, and dispatch to the pack
+# installers, ending with a per-pack OK/FAILED summary.
 #
 #   source  (default inside a local checkout): the script sits next to .git/ and packs/,
 #           so it installs by COPYING from the checkout. Nothing is built or compiled.
@@ -23,26 +26,20 @@
 #               standalone, e.g. via curl | sh)
 #   --dest DIR  install target — only allowed with a single pack; every pack otherwise
 #               installs into its own PACK_DEFAULT_DEST
-#   --no-plugin skip every pack's plugins/ payload dir (and remove a previously installed
-#               copy via the manifest cleanup)
+#   --no-plugin skip every pack's plugins/ payload dir
 #
 # Release payload: agent-packs.tar.gz with one top-level agent-packs/ dir containing
-# packs/ install.sh LICENSE. Only the selected packs are installed. Each pack is
-# described by packs/<name>/pack.conf — see packs/README.md for the contract.
+# packs/ install.sh scripts/install-lib.sh LICENSE. Only the selected packs are installed.
+# Each pack is described by packs/<name>/pack.conf (metadata) and installed by
+# packs/<name>/install.sh — see packs/README.md for the contract.
 #
-# Per selected pack the installer:
-#   - hard-fails on any missing PACK_PREREQS tool
-#   - copies each PACK_PAYLOAD dir from packs/<name>/ to the dest root (COPY-based on
-#     purpose, cp -RL: OpenCode's discovery does not follow symlinked agent files)
-#   - composes each PACK_COMPOSE entry "src:dst" (src relative to the payload root,
-#     dst relative to the dest root), e.g. packs/<other-pack>/lib:lib
-#   - strips .agent/ and __pycache__/ from everything installed (OpenCode discovers
-#     agents/**/*.md recursively — an installed .agent/*.md would register as an agent)
-#   - writes <PACK_META_PREFIX>.version + <PACK_META_PREFIX>.manifest into the dest; the
-#     manifest drives stale-file cleanup on reinstall and also processes the legacy
-#     PACK_LEGACY_MANIFEST once (pre-rename opencode-agents.manifest), then removes it
-# Packs may define pack_extra_checks() (warnings) and pack_next_steps() (hints) hooks in
-# pack.conf.
+# Dispatch: for each selected pack this script runs, with AGENT_PACKS_ROOT=<payload root>:
+#   sh packs/<name>/install.sh check                                   # prereqs + warnings,
+#                                                                      # before any dest is touched
+#   sh packs/<name>/install.sh install <dest> <version> [--no-plugin]  # the actual install
+# The pack installer writes <PACK_META_PREFIX>.version + <PACK_META_PREFIX>.manifest into
+# the dest; the manifest drives stale-file cleanup on reinstall and also processes the
+# legacy PACK_LEGACY_MANIFEST once, then removes it.
 set -eu
 unset CDPATH  # keep `cd` output clean when resolving SCRIPT_DIR below
 
@@ -168,6 +165,10 @@ else
   fi
 fi
 
+# payload root for the pack installers (they source $AGENT_PACKS_ROOT/scripts/install-lib.sh
+# unless AGENT_PACKS_INSTALL_LIB overrides it)
+export AGENT_PACKS_ROOT="$ROOT"
+
 # ---- pack discovery + selection ----------------------------------------------
 
 list_pack_names() {
@@ -177,40 +178,20 @@ list_pack_names() {
   done | LC_ALL=C sort
 }
 
-pack_description() { # $1 = pack name — sourced in a subshell so nothing leaks
+# pack_conf_value <pack> <var> — read one metadata key from a pack.conf in a subshell
+# (so nothing leaks into this shell; PACK_DEFAULT_DEST expands with the current env)
+pack_conf_value() {
   (
-    unset PACK_NAME PACK_DESCRIPTION PACK_DEFAULT_DEST PACK_META_PREFIX PACK_PAYLOAD
+    unset PACK_NAME PACK_DESCRIPTION PACK_DEFAULT_DEST PACK_META_PREFIX PACK_PREREQS \
+          PACK_LEGACY_MANIFEST PACK_LEGACY_CLEANUP
     # shellcheck disable=SC1090
     . "$ROOT/packs/$1/pack.conf" 2>/dev/null || true
-    printf '%s' "${PACK_DESCRIPTION:-}"
+    eval "printf '%s' \"\${$2:-}\""
   )
 }
 
-load_pack() { # $1 = pack name — sources pack.conf and validates the required keys
-  conf="$ROOT/packs/$1/pack.conf"
-  if [ ! -f "$conf" ]; then
-    echo "install.sh: no pack.conf for pack '$1' (looked in $conf)" >&2
-    return 1
-  fi
-  unset PACK_NAME PACK_DESCRIPTION PACK_DEFAULT_DEST PACK_META_PREFIX PACK_PAYLOAD \
-        PACK_SHIP_ONLY PACK_COMPOSE PACK_PREREQS PACK_LEGACY_MANIFEST PACK_LEGACY_CLEANUP
-  pack_extra_checks() { :; }   # hooks may be (re)defined by pack.conf
-  pack_next_steps() { :; }
-  # shellcheck disable=SC1090
-  . "$conf"
-  for v in PACK_NAME PACK_DESCRIPTION PACK_DEFAULT_DEST PACK_META_PREFIX PACK_PAYLOAD; do
-    eval "val=\${$v:-}"
-    if [ -z "$val" ]; then
-      echo "install.sh: $conf: missing required key $v" >&2
-      return 1
-    fi
-  done
-  if [ "$PACK_NAME" != "$1" ]; then
-    echo "install.sh: $conf: PACK_NAME '$PACK_NAME' does not match pack dir '$1'" >&2
-    return 1
-  fi
-  return 0
-}
+pack_description() { pack_conf_value "$1" PACK_DESCRIPTION; }
+pack_default_dest() { pack_conf_value "$1" PACK_DEFAULT_DEST; }
 
 # space-separated word list (a newline-separated list breaks the " $ALL_PACKS " membership
 # test below once more than one pack exists)
@@ -320,157 +301,35 @@ if [ -n "$DEST" ] && [ $# -gt 1 ]; then
   exit 2
 fi
 
-# ---- per-pack prereq + warning pass (fail before touching any dest) ----------
+# ---- preflight: every selected pack's `check` (prereqs, payload dirs, warnings) ----
+# before any dest is touched
 
 for p in $PACKS; do
-  load_pack "$p" || exit 1
-  for t in ${PACK_PREREQS:-}; do
-    if ! "$t" --version >/dev/null 2>&1; then
-      echo "install.sh: pack '$p' requires $t, but it is missing or could not be executed" >&2
-      echo "  install $t and re-run" >&2
-      exit 1
-    fi
-  done
-  pack_extra_checks
+  sh "$ROOT/packs/$p/install.sh" check
 done
 
-# ---- install ------------------------------------------------------------------
+# ---- install: dispatch to each pack's own installer ----------------------------
 
-# stale_cleanup <manifest> <dest> <managed-top-dirs...> — remove previously installed
-# files (under managed dirs only) that are no longer in $new_list
-stale_cleanup() {
-  manifest="$1"; dest="$2"; shift 2
-  [ -f "$manifest" ] || return 0
-  n=0
-  while IFS= read -r f; do
-    case "$f" in
-      *"/.agent/"*|*"__pycache__"*) continue ;;
-    esac
-    skip=1
-    for top in "$@"; do
-      case "$f" in "$top"/*) skip=0; break ;; esac
-    done
-    [ "$skip" = "1" ] && continue
-    if ! grep -qxF "$f" "$new_list"; then
-      rm -f "$dest/$f"
-      n=$((n + 1))
-    fi
-  done < "$manifest"
-  [ "$n" -gt 0 ] && echo "install.sh: removed $n stale file(s) from a previous install"
-  return 0
-}
-
-# install_pack <pack> <dest> <version> — pack.conf must already be loaded
-install_pack() {
-  pack="$1"; dest="$2"; version="$3"
-
-  inst=""
-  for d in $PACK_PAYLOAD; do
-    if [ ! -d "$ROOT/packs/$pack/$d" ]; then
-      echo "install.sh: pack '$pack': PACK_PAYLOAD dir '$d' missing under packs/$pack/" >&2
-      exit 1
-    fi
-    if [ "$d" = "plugins" ] && [ "$INSTALL_PLUGIN" = "0" ]; then
-      continue
-    fi
-    inst="$inst $d"
-  done
-
-  comp=""
-  for e in ${PACK_COMPOSE:-}; do
-    src=${e%%:*}; dst=${e#*:}
-    if [ -z "$src" ] || [ -z "$dst" ] || [ "$src" = "$e" ]; then
-      echo "install.sh: pack '$pack': bad PACK_COMPOSE entry '$e' (want src:dst)" >&2
-      exit 1
-    fi
-    if [ ! -d "$ROOT/$src" ]; then
-      echo "install.sh: pack '$pack': PACK_COMPOSE source '$src' missing in the payload root" >&2
-      exit 1
-    fi
-    comp="$comp $e"
-  done
-
-  # managed top-level dirs in the dest = installed payload dirs + compose dst roots
-  managed=""
-  for d in $inst; do
-    managed="$managed $d"
-  done
-  for e in $comp; do
-    top=${e#*:}; top=${top%%/*}
-    case " $managed " in *" $top "*) ;; *) managed="$managed $top" ;; esac
-  done
-
-  mkdir -p "$dest"
-  new_list="$dest/.${PACK_META_PREFIX}.manifest.tmp"
-  old_manifest="$dest/${PACK_META_PREFIX}.manifest"
-
-  # copy payload dirs (-L dereferences symlinked placeholder agents like plan-thorough.md)
-  for d in $inst; do
-    mkdir -p "$dest/$d"
-    cp -RL "$ROOT/packs/$pack/$d/." "$dest/$d/"
-  done
-  # compose PACK_COMPOSE entries into their dest paths
-  for e in $comp; do
-    src=${e%%:*}; dst=${e#*:}
-    mkdir -p "$dest/$dst"
-    cp -RL "$ROOT/$src/." "$dest/$dst/"
-  done
-
-  # strip legacy .agent/ + bytecode dirs (OpenCode discovers agents/**/*.md recursively,
-  # so an installed .agent/*.md would register as an agent) and make scripts executable
-  find_dirs=""
-  for top in $managed; do
-    [ -d "$dest/$top" ] || continue
-    find_dirs="$find_dirs $top"
-    find "$dest/$top" -type d \( -name .agent -o -name __pycache__ \) -prune -exec rm -rf {} +
-    find "$dest/$top" -type f \( -name '*.sh' -o -name '*.py' \) -exec chmod +x {} +
-  done
-
-  # manifest of installed files (drives stale-file cleanup on reinstall) — built from
-  # the SOURCE payload, NOT from the dest, so stale files left in the dest by older
-  # installs are not listed here and get removed by stale_cleanup below
-  : > "$new_list"
-  # shellcheck disable=SC2086  # $inst is an intentional word list
-  for d in $inst; do
-    (cd "$ROOT/packs/$pack/$d" && find -L . -type f ! -path '*/.agent/*' ! -path '*/__pycache__/*' | sed "s|^\./|$d/|") >> "$new_list"
-  done
-  # shellcheck disable=SC2086  # $comp is an intentional word list
-  for e in $comp; do
-    src=${e%%:*}; dst=${e#*:}
-    (cd "$ROOT/$src" && find -L . -type f ! -path '*/.agent/*' ! -path '*/__pycache__/*' | sed "s|^\./|$dst/|") >> "$new_list"
-  done
-  LC_ALL=C sort -o "$new_list" "$new_list"
-
-  # shellcheck disable=SC2086  # $managed is an intentional word list
-  stale_cleanup "$old_manifest" "$dest" $managed
-  if [ -n "${PACK_LEGACY_MANIFEST:-}" ]; then
-    # shellcheck disable=SC2086
-    stale_cleanup "$dest/$PACK_LEGACY_MANIFEST" "$dest" $managed
-    rm -f "$dest/$PACK_LEGACY_MANIFEST"
-  fi
-  for f in ${PACK_LEGACY_CLEANUP:-}; do
-    rm -f "$dest/$f"
-  done
-
-  mv "$new_list" "$old_manifest"
-  printf '%s\n' "$version" > "$dest/${PACK_META_PREFIX}.version"
-
-  components=""
-  for d in $inst; do components="$components $d/"; done
-  for e in $comp; do components="$components ${e#*:}/ (from ${e%%:*})"; done
-  echo "Installed pack '$pack' $version -> $dest"
-  echo "  components:$components"
-  SUMMARY="$SUMMARY
-  $pack $version -> $dest"
-  pack_next_steps
-}
-
+rc=0
 SUMMARY=""
 for p in $PACKS; do
-  load_pack "$p" || exit 1
-  pdest="${DEST:-$PACK_DEFAULT_DEST}"
-  install_pack "$p" "$pdest" "$version"
+  pdest="${DEST:-$(pack_default_dest "$p")}"
+  np=""
+  if [ "$INSTALL_PLUGIN" = "0" ]; then np="--no-plugin"; fi
+  # shellcheck disable=SC2086  # $np is an intentional word list (empty or --no-plugin)
+  if sh "$ROOT/packs/$p/install.sh" install "$pdest" "$version" $np; then
+    SUMMARY="$SUMMARY
+  OK     $p $version -> $pdest"
+  else
+    SUMMARY="$SUMMARY
+  FAILED $p -> $pdest"
+    rc=1
+  fi
 done
 
 echo
-echo "Done — installed packs:$SUMMARY"
+echo "Done — per-pack summary:$SUMMARY"
+if [ "$rc" -ne 0 ]; then
+  echo "install.sh: at least one pack failed to install" >&2
+  exit 1
+fi

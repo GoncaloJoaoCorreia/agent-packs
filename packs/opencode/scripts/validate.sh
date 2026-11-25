@@ -62,10 +62,11 @@ fi
 echo "ok: --list lists opencode"
 
 echo "== asset convention files =="
-for f in "$REPO/install.sh" pack.conf agents commands snippets plugins agent-scripts skills; do
+for f in "$REPO/install.sh" "$REPO/scripts/install-lib.sh" pack.conf install.sh \
+         agents commands snippets plugins agent-scripts skills; do
   [ -e "$f" ] || { echo "FAIL: missing $f" >&2; exit 1; }
 done
-echo "ok: install.sh + pack.conf + agents/ commands/ snippets/ plugins/ agent-scripts/ skills/ present"
+echo "ok: install.sh + install-lib.sh + pack.conf + pack install.sh + agents/ commands/ snippets/ plugins/ agent-scripts/ skills/ present"
 
 echo "== agent-scripts =="
 AS="$PACK_DIR/agent-scripts"

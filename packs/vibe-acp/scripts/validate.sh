@@ -8,9 +8,10 @@ PACK_DIR=$(cd "$(dirname "$0")/.." && pwd)
 REPO=$(cd "$PACK_DIR/../.." && pwd)
 cd "$PACK_DIR"
 
-echo "== pack.conf syntax =="
+echo "== pack.conf + pack install.sh syntax =="
 sh -n pack.conf
-echo "ok: sh -n pack.conf"
+sh -n install.sh
+echo "ok: sh -n pack.conf install.sh"
 
 echo "== JSON files parse (package.json x2, snippets/opencode.jsonc) =="
 node - <<'NODE'

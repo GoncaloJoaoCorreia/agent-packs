@@ -9,7 +9,9 @@ name: release
 #   3. compute the tag (auto patch-bump from latest v* tag, or the `version` input)
 #   4. tag + push main
 #   5. build agent-packs.tar.gz + agent-packs.tar.gz.sha256 (the installer's asset
-#      convention: one top-level agent-packs/ dir with packs/ install.sh LICENSE),
+#      convention: one top-level agent-packs/ dir with packs/ install.sh
+#      scripts/install-lib.sh LICENSE — the pack-owned packs/*/install.sh source
+#      scripts/install-lib.sh via $AGENT_PACKS_ROOT/scripts/install-lib.sh),
 #      plus a legacy opencode-agents.tar.gz (old layout) + SHA256SUMS so
 #      pre-rename installers still served from the old raw URL keep working
 #   6. create the GitHub release with an auto changelog
@@ -150,6 +152,12 @@ jobs:
           mkdir -p "$stage_root/agent-packs"
           # -L dereferences symlinked placeholder agents (plan-thorough.md)
           cp -RL packs install.sh LICENSE "$stage_root/agent-packs/"
+          # the pack-owned installers source the shared mechanics from
+          # $AGENT_PACKS_ROOT/scripts/install-lib.sh — ship exactly that file
+          # (packs/*/install.sh ship inside packs/; vendoring a copy into each
+          # pack tarball comes with G-113 M2)
+          mkdir -p "$stage_root/agent-packs/scripts"
+          cp -RL scripts/install-lib.sh "$stage_root/agent-packs/scripts/"
           # strip repo-only dev files from every pack: scripts/, docs/, pack-level
           # README.md/AGENTS.md (the payload ships packs/README.md + pack.conf + payload dirs)
           find "$stage_root/agent-packs/packs" -mindepth 2 -maxdepth 2 \
@@ -228,6 +236,12 @@ jobs:
             grep -qxF "opencode-agents/$f" "$t/legacy-list" || { echo "FAIL: legacy tarball missing opencode-agents/$f" >&2; exit 1; }
           done
           tar -xzf "$t/agent-packs.tar.gz" -C "$t"
+          # the payload must carry the pack-owned installers + the shared lib they source
+          test -f "$t/agent-packs/scripts/install-lib.sh"
+          diff "$t/agent-packs/scripts/install-lib.sh" scripts/install-lib.sh
+          for p in opencode vibe-acp vibe-skills; do
+            test -f "$t/agent-packs/packs/$p/install.sh" || { echo "FAIL: tarball missing packs/$p/install.sh" >&2; exit 1; }
+          done
           # installed payload must match the checkout (payload dirs)
           diff -r --exclude=.agent --exclude=__pycache__ "$t/agent-packs/packs/opencode/agents" packs/opencode/agents
           diff -r --exclude=.agent --exclude=__pycache__ "$t/agent-packs/packs/opencode/commands" packs/opencode/commands
