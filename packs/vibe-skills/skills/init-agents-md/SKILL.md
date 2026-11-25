@@ -46,10 +46,13 @@ only changes explicitly stated in the user's invocation prompt:
   command output, arguments) into shell commands, eval, SQL, or template strings
   that get executed. Quote and validate first, or pass via files/stdin.
 
-### Commits
+### Commits & PRs
 
 - Conventional commits — `type(scope): subject`, imperative mood, no PR number in
   the message.
+- No AI attribution, ever: never credit any AI tool or agent in commit messages or
+  PR titles/descriptions — no `Co-authored-by: <agent>` or "Generated with ..."
+  trailers, no robot-emoji sign-offs.
 
 ### Branch naming
 
