@@ -74,17 +74,31 @@ only changes explicitly stated in the user's invocation prompt:
 
 ### Tests
 
-- Write new tests only when they are actually valuable — never to chase coverage
-  stats. A test earns its place when it pins behavior that could realistically
-  regress and break something users depend on.
-- Valuable: edge cases and error paths of non-trivial logic, regression tests for
-  bugs that were actually fixed, contracts of public interfaces, parsing and
-  validation of external input.
-- Not valuable: tests of trivial getters/setters, tests of third-party library
-  behavior, tests that only assert a mock returns what the mock was told to return,
-  or duplicate tests covering the same path.
-- A test must be able to fail for the right reason; prefer a few meaningful
-  assertions over many shallow ones.
+- Tests are not free — each one costs review attention, maintenance, and tokens on
+  every future change to the code it touches. Write a new test only when it can
+  catch a realistic regression in behavior someone depends on: be able to name a
+  concrete bug that would make this test fail while the rest of the suite passes.
+  No nameable bug → don't write it. Never chase coverage stats or test counts.
+- Concentrate tests where failure is expensive: money/billing/quantities/rounding,
+  data integrity and migrations, auth/authz and tenant isolation, external
+  contracts (API, serialization, wire/storage formats), concurrency/retries/
+  recovery, irreversible side effects (sends, deletes, publishes). Trivial glue on
+  a non-critical path needs no test.
+- Real value: business rules, branching, calculations, invariants, normalization,
+  validation; error handling, retries, permission checks, boundary conditions,
+  fallbacks; state transitions and externally visible side effects; module/API
+  boundary contracts; regression tests for real past bugs.
+- Low value — don't write: getter/DTO echo assertions, stub-only assertions with no
+  decision-making behind them, mock-interaction checks with no visible outcome,
+  asserting framework/library behavior, re-implementing the production code inside
+  the test, `not null`/size-only assertions, trivial mappers or generated code
+  written just for coverage, duplicate tests of the same branch with different
+  literals, and tests pinned to implementation structure that fail on
+  behavior-preserving refactors.
+- May look trivial but can still be valuable: constructors/factories that validate,
+  normalize, parse, or reject input; value objects whose equality, ordering, or
+  hashing encode business rules; mapping/serialization code with contract risk;
+  wrappers that enforce invariants.
 
 ### Working style
 
