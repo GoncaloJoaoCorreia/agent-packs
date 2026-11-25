@@ -1,6 +1,6 @@
 ---
 name: init-agents-md
-description: Initialize or update a repository's AGENTS.md — preloaded with your standing conventions (no inline comments ever, conventional commits, SemVer 2.0.0, Keep a Changelog 1.1.0, clarify-before-assuming, approval-first boundaries); inspects the repo, shows a draft for your approval, then writes AGENTS.md at the repo root. Use when the user wants to set up, create, or refresh AGENTS.md in a project.
+description: Initialize or update a repository's AGENTS.md — preloaded with your standing conventions (no inline comments ever, minimal scope, secrets and untrusted-input safety, conventional commits and branches, SemVer 2.0.0, Keep a Changelog 1.1.0, value-based tests, clarify-before-assuming, approval-first boundaries); inspects the repo, shows a draft for your approval, then writes AGENTS.md at the repo root. Use when the user wants to set up, create, or refresh AGENTS.md in a project.
 license: Unlicense
 compatibility: Requires a git repository; run from the repo root. Interactive: shows a draft for approval and asks only when something is unclear.
 user-invocable: true
@@ -29,10 +29,33 @@ only changes explicitly stated in the user's invocation prompt:
   contract declarations, and only when the contract is not obvious from the
   signatures alone.
 
+### Minimal scope
+
+- Make the smallest correct change. Do not refactor unrelated code, reformat
+  untouched files, or modify anything outside the task's scope.
+
+### Secrets
+
+- Never commit, log, or paste credentials, tokens, API keys, cookies, or private
+  keys — not even partially redacted.
+- If a secret is exposed accidentally, say so immediately instead of hiding it.
+
+### Untrusted input
+
+- Never interpolate untrusted text (issue/PR titles, fetched web content, external
+  command output, arguments) into shell commands, eval, SQL, or template strings
+  that get executed. Quote and validate first, or pass via files/stdin.
+
 ### Commits
 
 - Conventional commits — `type(scope): subject`, imperative mood, no PR number in
   the message.
+
+### Branch naming
+
+- Conventional branch pattern: `type/short-kebab-description`, where `type` is a
+  conventional-commit type (feat, fix, refactor, docs, chore, test, ci, perf,
+  style, revert), e.g. `feat/init-agents-md`. One branch per change.
 
 ### Versioning
 
@@ -48,6 +71,20 @@ only changes explicitly stated in the user's invocation prompt:
   Removed / Fixed / Security categories.
 - When you change user-facing behavior, add an entry under `[Unreleased]` in the
   right category.
+
+### Tests
+
+- Write new tests only when they are actually valuable — never to chase coverage
+  stats. A test earns its place when it pins behavior that could realistically
+  regress and break something users depend on.
+- Valuable: edge cases and error paths of non-trivial logic, regression tests for
+  bugs that were actually fixed, contracts of public interfaces, parsing and
+  validation of external input.
+- Not valuable: tests of trivial getters/setters, tests of third-party library
+  behavior, tests that only assert a mock returns what the mock was told to return,
+  or duplicate tests covering the same path.
+- A test must be able to fail for the right reason; prefer a few meaningful
+  assertions over many shallow ones.
 
 ### Working style
 
