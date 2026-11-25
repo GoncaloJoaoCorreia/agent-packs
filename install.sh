@@ -17,12 +17,12 @@
 # Usage: install.sh [PACK[@VERSION] ...] [--source|--release] [--dest DIR] [--no-plugin] [--list] [-h|--help]
 #
 #   PACK ...    packs to install, by name, optionally pinned as PACK@<version> (release
-#               mode only), or "all". Default: interactive multi-select when a TTY is
-#               available; otherwise the default pack ("opencode" when present, else the
-#               first pack alphabetically).
-#               NOTE: with `curl ... | sh`, stdin is the script itself, so the prompt reads
-#               from /dev/tty — in CI (no TTY) the default pack is installed silently.
+#               mode only), or "all". Given on the command line, never prompts.
+#               With no PACK args and a TTY, an ANSI checkbox TUI opens (reads /dev/tty,
+#               so it works with `curl ... | sh`); --plain forces the numbered prompt.
+#               No TTY + no PACK args -> exit 2 (no silent default pack).
 #   --list      list the available packs (with versions in release mode) and exit
+#   --plain     force the numbered multi-select prompt instead of the TUI
 #   --source    install from the local checkout this script lives in (auto-detected when
 #               .git/ and packs/ sit next to the script)
 #   --release   install from the latest GitHub release (default when run standalone, e.g.
@@ -56,19 +56,21 @@ MODE="auto"
 DEST=""            # empty = per-pack PACK_DEFAULT_DEST
 INSTALL_PLUGIN=1
 DO_LIST=0
+DO_PLAIN=0         # --plain forces the numbered prompt instead of the TUI
 PACKS=""           # selected pack names, space-separated
 
 usage() {
   cat <<EOF
 agent-packs installer — installs harness packs (see packs/README.md)
 
-Usage: install.sh [PACK ...] [--source|--release] [--dest DIR] [--no-plugin] [--list] [-h|--help]
+Usage: install.sh [PACK[@VERSION] ...] [--source|--release] [--dest DIR] [--no-plugin] [--plain] [--list] [-h|--help]
 
   PACK ...    pack names to install, optionally pinned as PACK@<version> (release mode
-              only), or "all". Default: interactive multi-select on a TTY (reads /dev/tty,
-              so it works with \`curl ... | sh\`), else the default pack ("opencode" when
-              present, else the first pack). In CI/no-TTY, pass pack names explicitly.
+              only), or "all". Given on the command line, never prompts. With no PACK
+              args and a TTY, an ANSI checkbox TUI opens (reads /dev/tty, so it works
+              with \`curl ... | sh\`). No TTY + no PACK args -> exit 2.
   --list      list available packs (with versions in release mode) and exit
+  --plain     force the numbered multi-select prompt instead of the TUI
   --source    install from the local checkout this script lives in (auto-detected
               when .git/ and packs/ sit next to the script)
   --release   install from the latest GitHub release (default when run standalone, e.g.
@@ -87,6 +89,7 @@ while [ $# -gt 0 ]; do
     --release)   MODE="release" ;;
     --dest)      DEST="${2:?install.sh: --dest needs a DIR}"; shift ;;
     --no-plugin) INSTALL_PLUGIN=0 ;;
+    --plain)     DO_PLAIN=1 ;;
     --list)      DO_LIST=1 ;;
     -h|--help)   usage; exit 0 ;;
     -*) echo "install.sh: unknown argument: $1" >&2; usage >&2; exit 2 ;;
@@ -94,6 +97,18 @@ while [ $# -gt 0 ]; do
   esac
   shift
 done
+
+# single exit trap: restore the TTY if the TUI put it in raw mode, clean the release tmpdir
+cleanup() {
+  if [ -n "${TUI_OLD:-}" ]; then
+    stty "$TUI_OLD" < /dev/tty 2>/dev/null || true
+    TUI_OLD=""
+  fi
+  if [ -n "${TMP:-}" ]; then
+    rm -rf "$TMP"
+  fi
+}
+trap cleanup EXIT INT TERM
 
 # When piped (`curl ... | sh`), $0 is "sh" — not a file — so auto-detect falls to release mode.
 SCRIPT_DIR=""
@@ -186,7 +201,6 @@ resolve_tag() {
 
 if [ "$MODE" = "release" ]; then
   TMP=$(mktemp -d)
-  trap 'rm -rf "$TMP"' EXIT INT TERM
   # Public repo: the plain download URLs work unauthenticated — no gh/token needed.
   # The latest release's manifest.json drives everything (0 API calls for the latest flow).
   LATEST_MANIFEST="$TMP/manifest.latest.json"
@@ -333,12 +347,213 @@ select_packs_interactive() {
   done
 }
 
+# ---- interactive selection ------------------------------------------------------
+# Non-interactive contract: PACK args never prompt. No args + no TTY -> exit 2.
+# With a TTY: ANSI checkbox TUI (unless --plain or stty is broken -> numbered prompt).
+
+# list_release_tags — release tags, newest first, one paginated API call (cap 100)
+list_release_tags() {
+  json=$(api_list_releases 1) || return 1
+  [ -n "$json" ] || return 1
+  printf '%s' "$json" | sed -n 's/.*"tag_name": *"\([^"]*\)".*/\1/p' | head -n 100 | tr '\n' ' '
+}
+
+# pver_of <name> — pending version tag for a pack ("" = latest)
+pver_of() {
+  # shellcheck disable=SC2086  # $PVER is an intentional word list
+  for t in $PVER; do
+    case "$t" in "$1@"*) printf '%s' "${t#*@}"; return ;; esac
+  done
+  printf ''
+}
+
+# set_pver <name> <tag> — set (or clear, when tag is empty) the pending version tag
+set_pver() {
+  _sp_new=""
+  _sp_found=0
+  # shellcheck disable=SC2086  # $PVER is an intentional word list
+  for t in $PVER; do
+    case "$t" in
+      "$1@"*)
+        _sp_found=1
+        if [ -n "$2" ]; then _sp_new="$_sp_new $1@$2"; fi
+        ;;
+      *) _sp_new="$_sp_new $t" ;;
+    esac
+  done
+  if [ "$_sp_found" = "0" ] && [ -n "$2" ]; then _sp_new="$_sp_new $1@$2"; fi
+  PVER=$_sp_new
+}
+
+# sel_has <name> / sel_toggle <name>
+sel_has() {
+  case " $SEL " in *" $1 "*) return 0 ;; *) return 1 ;; esac
+}
+sel_toggle() {
+  if sel_has "$1"; then
+    _st_new=""
+    # shellcheck disable=SC2086  # $SEL is an intentional word list
+    for s in $SEL; do [ "$s" = "$1" ] || _st_new="$_st_new $s"; done
+    SEL=$_st_new
+  else
+    SEL="$SEL $1"
+  fi
+}
+
+# ver_label <name> — display label for the pack's pending version
+ver_label() {
+  if [ "$MODE" != "release" ] || [ -z "$TAGS" ]; then
+    printf ''
+    return
+  fi
+  _vl_tag=$(pver_of "$1")
+  if [ -z "$_vl_tag" ]; then
+    printf '@latest'
+    return
+  fi
+  # direct manifest download for the browsed tag (cached); not rate-limited
+  _vl_mf="$TMP/manifest.$_vl_tag.json"
+  if [ ! -f "$_vl_mf" ]; then
+    curl -fsSL "$RELEASE_BASE/download/$_vl_tag/manifest.json" -o "$_vl_mf" 2>/dev/null || {
+      printf '@%s (no manifest)' "$_vl_tag"
+      return
+    }
+  fi
+  _vl_v=$(mf_get "$_vl_mf" "$1" version)
+  if [ -n "$_vl_v" ]; then
+    printf '@%s (%s)' "$_vl_tag" "$_vl_v"
+  else
+    printf '@%s (no %s)' "$_vl_tag" "$1"
+  fi
+}
+
+# tui_render — redraw the checkbox list to /dev/tty
+tui_render() {
+  {
+    printf '\033[H\033[2J'
+    printf 'agent-packs installer — select packs to install\n'
+    printf '  up/down: move   space: toggle   left/right: cycle version   enter: install   q: quit\n\n'
+    _tr_i=0
+    # shellcheck disable=SC2086  # $ALL_PACKS is an intentional word list
+    for p in $ALL_PACKS; do
+      _tr_i=$((_tr_i + 1))
+      if sel_has "$p"; then _tr_mark='[x]'; else _tr_mark='[ ]'; fi
+      _tr_line="  $_tr_mark $p $(ver_label "$p") — $(pack_description "$p")"
+      if [ "$_tr_i" = "$CURSOR" ]; then
+        printf '\033[7m%s\033[0m\n' "$_tr_line"
+      else
+        printf '%s\n' "$_tr_line"
+      fi
+    done
+    if [ -n "${TUI_ERR:-}" ]; then
+      printf '\033[31m%s\033[0m\n' "$TUI_ERR"
+    fi
+  } > /dev/tty
+}
+
+# read_key — one keypress from /dev/tty as hex (dd+od: robust in raw mode)
+read_key() {
+  dd bs=1 count=1 < /dev/tty 2>/dev/null | od -An -tx1 | tr -d ' \n'
+}
+
+# tui_picker — pure-sh ANSI checkbox TUI over /dev/tty (zero external deps).
+# Sets PACKS to the confirmed "name[@tag] ..." selection and returns 0.
+tui_picker() {
+  TUI_OLD=$(stty -g < /dev/tty 2>/dev/null) || return 1
+  if ! stty raw -echo < /dev/tty 2>/dev/null; then
+    stty "$TUI_OLD" < /dev/tty 2>/dev/null || true
+    TUI_OLD=""
+    return 1
+  fi
+  if [ "$MODE" = "release" ]; then
+    TAGS=$(list_release_tags) || TAGS=""
+  else
+    TAGS=""
+  fi
+  # shellcheck disable=SC2034
+  # shellcheck disable=SC2086  # $ALL_PACKS is an intentional word list
+  NPACKS=$(printf '%s\n' $ALL_PACKS | wc -l | tr -d ' ')
+  CURSOR=1
+  SEL=""
+  PVER=""
+  TUI_ERR=""
+  tui_render
+  while :; do
+    hex=$(read_key)
+    if [ -z "$hex" ]; then
+      echo "install.sh: TTY closed — aborting" >&2
+      exit 2
+    fi
+    case "$hex" in
+      03) echo "install.sh: aborted (Ctrl-C)" >&2; exit 2 ;;
+      71) echo "install.sh: aborted" >&2; exit 2 ;;          # q
+      0d|0a)                                                    # enter
+        if [ -z "$SEL" ]; then
+          TUI_ERR="no packs selected — space toggles a pack"
+          tui_render
+          continue
+        fi
+        PACKS=""
+        # shellcheck disable=SC2086  # $SEL is an intentional word list
+        for p in $SEL; do
+          _tp_tag=$(pver_of "$p")
+          if [ -n "$_tp_tag" ]; then PACKS="$PACKS $p@$_tp_tag"; else PACKS="$PACKS $p"; fi
+        done
+        return 0
+        ;;
+      20)                                                       # space
+        # shellcheck disable=SC2086
+        p=$(printf '%s\n' $ALL_PACKS | awk -v n="$CURSOR" 'NR==n')
+        sel_toggle "$p"
+        TUI_ERR=""
+        ;;
+      1b)                                                       # ESC sequence (arrows)
+        h2=$(read_key); h3=$(read_key)
+        case "$h2$h3" in
+          5b41|4f41) CURSOR=$(( CURSOR - 1 )); [ "$CURSOR" -lt 1 ] && CURSOR=$NPACKS ;;       # up
+          5b42|4f42) CURSOR=$(( CURSOR + 1 )); [ "$CURSOR" -gt "$NPACKS" ] && CURSOR=1 ;;      # down
+          5b43|4f43) _tc=1 ;;                                                                   # right
+          5b44|4f44) _tc=-1 ;;                                                                  # left
+          *) _tc=0 ;;
+        esac
+        if [ "${_tc:-0}" != "0" ] && [ -n "$TAGS" ]; then
+          # shellcheck disable=SC2086  # $ALL_PACKS/$TAGS are intentional word lists
+          p=$(printf '%s\n' $ALL_PACKS | awk -v n="$CURSOR" 'NR==n')
+          # shellcheck disable=SC2086
+          tags_nl=$(printf '%s\n' $TAGS)
+          _tc_tag=$(pver_of "$p")
+          _tc_n=$(printf '%s\n' "$tags_nl" | wc -l | tr -d ' ')
+          _tc_i=0
+          if [ -n "$_tc_tag" ]; then
+            _tc_i=$(printf '%s\n' "$tags_nl" | grep -nFx "$_tc_tag" | cut -d: -f1)
+            [ -z "$_tc_i" ] && _tc_i=0
+          fi
+          _tc_i=$(( _tc_i + _tc ))
+          if [ "$_tc_i" -lt 0 ]; then _tc_i=$(( _tc_n - 1 )); fi
+          if [ "$_tc_i" -ge "$_tc_n" ]; then _tc_i=0; fi
+          if [ "$_tc_i" = "0" ]; then
+            set_pver "$p" ""
+          else
+            set_pver "$p" "$(printf '%s\n' "$tags_nl" | awk -v n="$((_tc_i + 1))" 'NR==n')"
+          fi
+          TUI_ERR=""
+        fi
+        ;;
+    esac
+    tui_render
+  done
+}
+
 if [ -z "$PACKS" ]; then
   if [ -r /dev/tty ] && [ -t 1 ]; then
-    select_packs_interactive
+    if [ "$DO_PLAIN" = "1" ] || ! stty -g < /dev/tty >/dev/null 2>&1; then
+      select_packs_interactive
+    else
+      tui_picker || exit 2
+    fi
   else
-    PACKS="$DEFAULT_PACK"
-    echo "install.sh: no pack given and no TTY — installing default pack '$DEFAULT_PACK' (pass PACK names or 'all'; --list shows the options)"
+    echo "install.sh: no TTY and no pack arguments — pass PACK[@version] ... or 'all' (--list shows the packs); refusing to pick a default silently" >&2
+    exit 2
   fi
 fi
 

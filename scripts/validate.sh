@@ -91,6 +91,42 @@ for conf in packs/*/pack.conf; do
   echo "ok: $pack -> $dest ($prefix.manifest + $prefix.version written)"
 done
 
+echo "== non-interactive contract: no TTY + no pack args -> exit 2 (no silent default) =="
+# stdout redirected to /dev/null so [ -t 1 ] is false even on an interactive terminal
+if sh install.sh --source </dev/null >/dev/null 2>"$smoke_tmp/notty.err"; then
+  echo "FAIL: no-TTY no-args install.sh --source should exit non-zero" >&2
+  exit 1
+fi
+grep -q 'no TTY and no pack arguments' "$smoke_tmp/notty.err" \
+  || { echo "FAIL: missing the clear no-TTY message:" >&2; cat "$smoke_tmp/notty.err" >&2; exit 1; }
+echo "ok: no-TTY no-args exits 2 with a clear message"
+if sh install.sh --source --plain </dev/null >/dev/null 2>&1; then
+  echo "FAIL: no-TTY no-args --plain should exit non-zero" >&2
+  exit 1
+fi
+echo "ok: --plain with no TTY + no args also exits 2"
+sh install.sh --source --plain --dest "$smoke_tmp/plain-cfg" opencode >/dev/null 2>&1 \
+  || { echo "FAIL: --plain with explicit pack args must install non-interactively" >&2; exit 1; }
+[ -f "$smoke_tmp/plain-cfg/agent-packs.opencode.manifest" ] \
+  || { echo "FAIL: --plain args install missing meta files" >&2; exit 1; }
+echo "ok: --plain with pack args installs non-interactively"
+
+echo "== TUI picker smoke (pty via script(1), skipped when unavailable) =="
+if command -v script >/dev/null 2>&1; then
+  printf ' \r' | script -qec "sh install.sh --source --dest \"$smoke_tmp/tui-cfg\"" /dev/null >/dev/null 2>&1
+  [ -f "$smoke_tmp/tui-cfg/agent-packs.opencode.manifest" ] \
+    || { echo "FAIL: TUI space+enter did not install the selected (first) pack" >&2; exit 1; }
+  echo "ok: TUI toggle+confirm installs the selected pack"
+  rc=0
+  printf 'q' | script -qec "sh install.sh --source --dest \"$smoke_tmp/tui-abort\"" /dev/null >/dev/null 2>&1 || rc=$?
+  [ "$rc" = "2" ] || { echo "FAIL: TUI q-abort should exit 2 (got $rc)" >&2; exit 1; }
+  [ ! -e "$smoke_tmp/tui-abort/agent-packs.opencode.manifest" ] \
+    || { echo "FAIL: TUI q-abort must not install anything" >&2; exit 1; }
+  echo "ok: TUI q aborts with exit 2 and installs nothing"
+else
+  echo "skip: script(1) not available"
+fi
+
 echo "== release-lib unit tests (path classification + conventional-commit bumps) =="
 # shellcheck disable=SC1091
 . scripts/release-lib.sh
@@ -162,6 +198,19 @@ cp "$e2e/artifacts/manifest.json" "$e2e/rel/latest/download/manifest.json"
 cp "$e2e/artifacts/manifest.json" "$e2e/rel/download/v9.9.9/manifest.json"
 cp "$e2e/artifacts/packs/opencode.tar.gz" "$e2e/rel/latest/download/packs/"
 cp "$e2e/artifacts/packs/opencode.tar.gz" "$e2e/rel/download/v9.9.9/packs/"
+# an older release tag (v9.9.8) with the same tarball but an older pack version — used by
+# the pinned and TUI version-cycling tests
+mkdir -p "$e2e/rel/download/v9.9.8/packs"
+sha_old=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["packs"]["opencode"]["sha256"])' "$e2e/artifacts/manifest.json")
+python3 - "$e2e/rel/download/v9.9.8/manifest.json" "$sha_old" <<'PY'
+import json, sys
+out, sha = sys.argv[1], sys.argv[2]
+entry = {"asset": "packs/opencode.tar.gz", "description": "opencode pack",
+         "sha256": sha, "version": "v2.1.1"}
+json.dump({"schema": 1, "release": "v9.9.8", "packs": {"opencode": entry}},
+          open(out, "w"), indent=2, sort_keys=True, ensure_ascii=False)
+PY
+cp "$e2e/artifacts/packs/opencode.tar.gz" "$e2e/rel/download/v9.9.8/packs/"
 # pretty-printed like the real GitHub API (one "tag_name" per line — resolve_tag parses per line)
 printf '%s\n' '[' '  {' '    "tag_name": "v9.9.9"' '  },' '  {' '    "tag_name": "v9.9.8"' '  }' ']' > "$e2e/api/releases"
 # tarball hygiene: pack installer + vendored lib ship, repo-only scripts/ stripped
@@ -204,6 +253,15 @@ if sh install.sh --source --dest "$e2e/cfg4" opencode@1.0.0 >/dev/null 2>&1; the
   exit 1
 fi
 echo "ok: pack@version rejected in --source mode"
+if command -v script >/dev/null 2>&1; then
+  # TUI in release mode: left-arrow cycles opencode @latest -> @v9.9.8, space toggles, enter
+  printf '\033[D \r' | script -qec "env AGENT_PACKS_RELEASE_BASE=\"file://$e2e/rel\" AGENT_PACKS_API=\"file://$e2e/api\" sh install.sh --release --dest \"$e2e/cfg-tui\"" /dev/null >/dev/null 2>&1 || true
+  [ "$(cat "$e2e/cfg-tui/agent-packs.opencode.version" 2>/dev/null)" = "v2.1.1" ] \
+    || { echo "FAIL: TUI version cycling did not pin opencode to the v9.9.8 release (version file: $(cat "$e2e/cfg-tui/agent-packs.opencode.version" 2>/dev/null))" >&2; exit 1; }
+  echo "ok: TUI left/right cycles the pack version across manifest history (installed v2.1.1 from v9.9.8)"
+else
+  echo "skip: script(1) not available — TUI release-mode cycling not smoke-tested"
+fi
 
 echo "== opencode pack agent-scripts tests =="
 sh packs/opencode/agent-scripts/tests/run-tests.sh
