@@ -167,6 +167,33 @@ rl_check "semver major"            "$(ap_semver_bump 2.1.1 major)" v3.0.0
 [ "$rl_fail" = "0" ] || { echo "FAIL: release-lib unit tests" >&2; exit 1; }
 echo "ok: release-lib classification + bumps"
 
+echo "== release-detect.sh output contract (packs= is cleanly word-separated) =="
+# regression: a trailing space in packs= broke the workflow's [ "$packs" = "all" ] check,
+# so "all" was never expanded and the build loop ran `packs/all/scripts/release.sh`
+rd_tmp="$smoke_tmp/release-detect"
+git init -q "$rd_tmp"
+mkdir -p "$rd_tmp/packs/alpha" "$rd_tmp/scripts"
+: > "$rd_tmp/packs/alpha/pack.conf"; : > "$rd_tmp/scripts/a.sh"
+git -C "$rd_tmp" add -A
+git -C "$rd_tmp" -c commit.gpgsign=false -c user.email=validate@local -c user.name=validate commit -qm base
+: > "$rd_tmp/scripts/b.sh"   # infra path -> every pack
+git -C "$rd_tmp" add -A
+git -C "$rd_tmp" -c commit.gpgsign=false -c user.email=validate@local -c user.name=validate commit -qm infra
+det=$(REPO_ROOT="$rd_tmp" BASELINE="HEAD~1" sh "$PWD/scripts/release-detect.sh")
+det_release=$(printf '%s\n' "$det" | sed -n 's/^release=//p')
+det_packs=$(printf '%s\n' "$det" | sed -n 's/^packs=//p')
+[ "$det_release" = "1" ] || { echo "FAIL: release-detect: release='$det_release' want 1" >&2; exit 1; }
+[ "$det_packs" = "all" ] || { echo "FAIL: release-detect: packs=[$det_packs] want exactly 'all' (no leading/trailing space)" >&2; exit 1; }
+echo "ok: infra diff -> release=1 packs=all (exact)"
+: > "$rd_tmp/packs/alpha/payload.txt"   # pack payload path -> just that pack
+git -C "$rd_tmp" add -A
+git -C "$rd_tmp" -c commit.gpgsign=false -c user.email=validate@local -c user.name=validate commit -qm payload
+det2=$(REPO_ROOT="$rd_tmp" BASELINE="HEAD~1" sh "$PWD/scripts/release-detect.sh")
+det2_packs=$(printf '%s\n' "$det2" | sed -n 's/^packs=//p')
+[ "$det2_packs" = "alpha" ] || { echo "FAIL: release-detect: packs=[$det2_packs] want 'alpha'" >&2; exit 1; }
+echo "ok: payload diff -> packs=alpha (exact)"
+rm -rf "$rd_tmp"
+
 echo "== assemble-manifest.py unit test (changed + carried-over entries) =="
 am_tmp="$smoke_tmp/assemble"
 mkdir -p "$am_tmp/artifacts/packs" "$am_tmp/repo/packs/alpha" "$am_tmp/repo/packs/beta"
