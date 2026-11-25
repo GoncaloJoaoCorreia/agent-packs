@@ -143,7 +143,7 @@ rl_check "classify payload path"   "$(ap_classify_path packs/open-driver/agents/
 rl_check "classify pack scripts/"  "$(ap_classify_path packs/open-driver/scripts/validate.sh open-driver)" docs
 rl_check "classify pack docs/"     "$(ap_classify_path packs/open-driver/docs/x.md open-driver)" docs
 rl_check "classify pack README"    "$(ap_classify_path packs/open-driver/README.md open-driver)" docs
-rl_check "classify other pack"     "$(ap_classify_path packs/vibe-acp/plugins/x.ts open-driver)" other
+rl_check "classify other pack"     "$(ap_classify_path packs/vibe-bridge/plugins/x.ts open-driver)" other
 rl_check "classify infra install"  "$(ap_classify_path install.sh open-driver)" infra
 rl_check "classify infra scripts"  "$(ap_classify_path scripts/validate.sh open-driver)" infra
 rl_check "classify infra workflow" "$(ap_classify_path .github/workflows/test.yml open-driver)" infra
@@ -151,7 +151,7 @@ rl_check "classify packs/README"   "$(ap_classify_path packs/README.md open-driv
 rl_check "classify root docs"      "$(ap_classify_path README.md open-driver)" docs
 rl_check "bump feat"               "$(ap_bump_of_message 'feat(open-driver): add x')" minor
 rl_check "bump feat bare"          "$(ap_bump_of_message 'feat: add x')" minor
-rl_check "bump fix"                "$(ap_bump_of_message 'fix(vibe-acp): repair y')" patch
+rl_check "bump fix"                "$(ap_bump_of_message 'fix(vibe-bridge): repair y')" patch
 rl_check "bump bang"               "$(ap_bump_of_message 'feat!: drop z')" major
 rl_check "bump scope bang"         "$(ap_bump_of_message 'fix(core)!: drop z')" major
 rl_check "bump BREAKING footer"    "$(ap_bump_of_message 'refactor: x
@@ -191,9 +191,9 @@ PY
 
 echo "== docs: no stale references to the pre-manifest release flow =="
 # .plan/ is gitignored scratch from old driver runs — excluded
-if grep -rnE '\bPACK_COMPOSE\b|\bPACK_PAYLOAD\b|\bPACK_SHIP_ONLY\b|agent-packs\.tar\.gz|opencode-agents\.tar\.gz|SHA256SUMS|packs/opencode/' \
+if grep -rnE '\bPACK_COMPOSE\b|\bPACK_PAYLOAD\b|\bPACK_SHIP_ONLY\b|agent-packs\.tar\.gz|opencode-agents\.tar\.gz|SHA256SUMS|packs/opencode/|packs/vibe-acp/' \
    --include='*.md' README.md AGENTS.md packs/ | grep -v '/\.plan/'; then
-  echo "FAIL: stale references to agent-packs.tar.gz / PACK_COMPOSE / PACK_PAYLOAD / PACK_SHIP_ONLY / legacy assets / packs/opencode/ in docs" >&2
+  echo "FAIL: stale references to agent-packs.tar.gz / PACK_COMPOSE / PACK_PAYLOAD / PACK_SHIP_ONLY / legacy assets / renamed pack paths in docs" >&2
   exit 1
 fi
 echo "ok: no stale release-flow references in README/AGENTS/pack docs"

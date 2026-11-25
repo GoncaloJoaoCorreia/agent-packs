@@ -1,9 +1,9 @@
 #!/bin/sh
-# packs/vibe-acp/install.sh — pack-owned installer for the vibe-acp pack.
+# packs/vibe-bridge/install.sh — pack-owned installer for the vibe-bridge pack.
 #
 # Invoked by the root install.sh (orchestrator) as:
-#   AGENT_PACKS_ROOT=<payload root> sh packs/vibe-acp/install.sh check
-#   AGENT_PACKS_ROOT=<payload root> sh packs/vibe-acp/install.sh install <dest> <version> [--no-plugin]
+#   AGENT_PACKS_ROOT=<payload root> sh packs/vibe-bridge/install.sh check
+#   AGENT_PACKS_ROOT=<payload root> sh packs/vibe-bridge/install.sh install <dest> <version> [--no-plugin]
 #
 # Shared mechanics come from install-lib.sh, found via $AGENT_PACKS_INSTALL_LIB, else the
 # copy vendored next to this script inside a release tarball ($AGENT_PACKS_ROOT/install-lib.sh),
@@ -30,7 +30,7 @@ fi
 . "$PACK_DIR/pack.conf"  # metadata only: PACK_NAME PACK_DESCRIPTION PACK_DEFAULT_DEST PACK_META_PREFIX PACK_PREREQS PACK_LEGACY_*
 
 # payload dirs copied to the dest root (copy-based on purpose; 'plugins' is skipped by
-# --no-plugin). OpenCode auto-discovers <config>/plugins/vibe-acp/ — no config edit
+# --no-plugin). OpenCode auto-discovers <config>/plugins/vibe-bridge/ — no config edit
 # needed. snippets/ ships in the release tarball but is NOT installed.
 PACK_PAYLOAD_DIRS="plugins"
 

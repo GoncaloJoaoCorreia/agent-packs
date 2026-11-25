@@ -1,16 +1,16 @@
-# AGENTS.md — vibe-acp pack
+# AGENTS.md — vibe-bridge pack
 
-The **vibe-acp** pack of [agent-packs](../../README.md) — Mistral Vibe (`vibe-acp`) as an
+The **vibe-bridge** pack of [agent-packs](../../README.md) — Mistral Vibe (`vibe-acp`) as an
 OpenCode `vibe/<model>` provider over ACP, with no OpenCode fork. Two pieces on supported
 extension points (plan: [../vibe/docs/acp-interop-plan.md](../vibe/docs/acp-interop-plan.md),
 Linear G-83):
 
-1. **provider runtime package** — `plugins/vibe-acp/provider/`: a dependency-free TS package
+1. **provider runtime package** — `plugins/vibe-bridge/provider/`: a dependency-free TS package
    exporting `createVibeAcpProvider` (the `create*` factory OpenCode's `aisdk:` package bridge
    loads), whose `languageModel(modelID)` spawns `vibe-acp` and translates ACP stdio into an
    AI SDK `LanguageModelV3` stream.
-2. **server plugin** — `plugins/vibe-acp/index.ts` (auto-discovered at
-   `<config>/plugins/vibe-acp/`): registers the provider via `ctx.provider.transform`, discovers
+2. **server plugin** — `plugins/vibe-bridge/index.ts` (auto-discovered at
+   `<config>/plugins/vibe-bridge/`): registers the provider via `ctx.provider.transform`, discovers
    models from the CLI (cached in `ctx.storage`, `ctx.provider.reload()` on change), adds the
    `vibe login` command auth method via `ctx.integration.transform`, forwards session/agent/kind
    headers on `model.request`, closes ACP sessions on `session.deleted`, and wires
@@ -18,17 +18,18 @@ Linear G-83):
 
 ## Install / verify
 
-- `./install.sh vibe-acp` (root) copies `plugins/` into
+- `./install.sh vibe-bridge` (root) copies `plugins/` into
   `${XDG_CONFIG_HOME:-~/.config}/opencode` (copy-based; `--dest DIR` for a throwaway config,
-  `--no-plugin` skips it). Meta files `agent-packs.vibe-acp.{version,manifest}` drive stale-file
-  cleanup on reinstall. `snippets/` is ship-only. The release tarball
-  (`packs/vibe-acp.tar.gz`) strips `scripts/`, `docs/`, and this file automatically and
+  `--no-plugin` skips it). Meta files `agent-packs.vibe-bridge.{version,manifest}` drive stale-file
+  cleanup on reinstall (the pre-rename `agent-packs.vibe-acp.*` meta files are cleaned up once).
+  `snippets/` is ship-only. The release tarball
+  (`packs/vibe-bridge.tar.gz`) strips `scripts/`, `docs/`, and this file automatically and
   carries `install.sh` + a vendored `install-lib.sh`.
-- `sh scripts/validate.sh` (root) auto-runs `packs/vibe-acp/scripts/validate.sh`: pack.conf
+- `sh scripts/validate.sh` (root) auto-runs `packs/vibe-bridge/scripts/validate.sh`: pack.conf
   syntax, JSON validity, plugin/provider path references, the `create*` export, the provider
   unit tests, and throwaway-install checks (payload + meta files, stale cleanup, `--no-plugin`,
   `--list`). **Re-run after every edit here.**
-- Provider tests: `cd plugins/vibe-acp/provider && npm test` (node ≥ 22.18 strips TS types, no
+- Provider tests: `cd plugins/vibe-bridge/provider && npm test` (node ≥ 22.18 strips TS types, no
   build). `npm run test:e2e` runs one real turn against the signed-in `vibe-acp` in a scratch cwd
   (sandboxed — own child process, temp dir; never touches a running OpenCode/Vibe instance).
 - Live smoke (sandboxed: throwaway `XDG_CONFIG_HOME`/`XDG_DATA_HOME`/`XDG_STATE_HOME`/
@@ -41,7 +42,7 @@ Linear G-83):
 ```
 pack.conf                # pack metadata (name, description, dest, meta prefix, prereqs); payload dirs live in install.sh
 install.sh               # pack-owned installer: PACK_PAYLOAD_DIRS="plugins" (+ hooks)
-plugins/vibe-acp/
+plugins/vibe-bridge/
   index.ts               # server plugin (provider transform + integration + hooks)
   provider/              # runtime package — src/{jsonrpc,protocol,client,sessions,renderer,
                          #   language-model,permissions,acp}.ts, test/, README.md, package.json

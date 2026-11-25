@@ -1,6 +1,6 @@
-// @agent-packs/vibe-acp-provider — the provider runtime package (plan §2 piece 1).
+// @agent-packs/vibe-bridge-provider — the provider runtime package (plan §2 piece 1).
 //
-// Loaded by OpenCode as `providers.vibe.package = "aisdk:file://<pack>/plugins/vibe-acp/provider"`.
+// Loaded by OpenCode as `providers.vibe.package = "aisdk:file://<pack>/plugins/vibe-bridge/provider"`.
 // Core's dynamic-provider plugin looks for an export whose name starts with `create`, calls it
 // with the provider's `settings`, and expects an AI SDK provider back: `{ languageModel(id) }`.
 // Each language model drives the `vibe-acp` binary over ACP (see client.ts / sessions.ts).

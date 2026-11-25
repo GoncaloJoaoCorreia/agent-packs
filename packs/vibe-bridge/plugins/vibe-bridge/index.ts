@@ -65,7 +65,7 @@ function toModels(catalog: DiscoveredCatalog | undefined) {
 }
 
 export default Plugin.define({
-  id: "agent-packs.vibe-acp",
+  id: "agent-packs.vibe-bridge",
   async setup(ctx) {
     const cli = cliCommand()
     const installed = onPath(cli.command)

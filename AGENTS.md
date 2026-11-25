@@ -4,7 +4,7 @@ Personal library of agent-harness extensions (**packs**): one self-contained pac
 harness under `packs/<name>/`.
 Currently ships three packs: **open-driver** (`packs/open-driver/`) — the **driver**
 (`/driver`, a multi-phase feature-cycle orchestrator) and the **driver-viz** TUI plugin —
-**vibe-acp** (`packs/vibe-acp/`) — Mistral Vibe (`vibe-acp` over ACP) as an OpenCode
+**vibe-bridge** (`packs/vibe-bridge/`) — Mistral Vibe (`vibe-acp` over ACP) as an OpenCode
 `vibe/<model>` provider, no OpenCode fork — and **vibe-skills** (`packs/vibe-skills/`) —
 a repository of Mistral Vibe skills (Agent Skills `SKILL.md`) installed into
 `${VIBE_HOME:-~/.vibe}/skills/` and publishable to the cloud Vibe registry
@@ -28,7 +28,7 @@ packs/
     scripts/                    # repo-only dev tooling (validate.sh, validate-driver-viz.sh,
                                 #   driver-viz-render-test/, screenshot-driver-viz.py) — NOT shipped
     docs/  README.md  AGENTS.md # repo-only docs — NOT shipped
-  vibe-acp/  vibe-skills/       # same contract: pack.conf + install.sh + payload dirs (+ repo-only scripts/ docs/)
+  vibe-bridge/  vibe-skills/       # same contract: pack.conf + install.sh + payload dirs (+ repo-only scripts/ docs/)
 scripts/
   install-lib.sh                # shared install mechanics, sourced by every packs/<name>/install.sh
                                 #   (vendored into each pack tarball at release time)

@@ -1,9 +1,9 @@
 #!/bin/sh
-# packs/vibe-acp/scripts/release.sh — pack-owned release builder for the vibe-acp pack.
+# packs/vibe-bridge/scripts/release.sh — pack-owned release builder for the vibe-bridge pack.
 # Run by .github/workflows/release.yml (G-113 M2) as:
-#   REPO_ROOT=<checkout> OUT_DIR=<artifacts dir> sh packs/vibe-acp/scripts/release.sh
-# Builds $OUT_DIR/packs/vibe-acp.tar.gz (payload + pack.conf + install.sh + vendored
-# install-lib.sh) and $OUT_DIR/vibe-acp.meta.json {version, description, asset, sha256}.
+#   REPO_ROOT=<checkout> OUT_DIR=<artifacts dir> sh packs/vibe-bridge/scripts/release.sh
+# Builds $OUT_DIR/packs/vibe-bridge.tar.gz (payload + pack.conf + install.sh + vendored
+# install-lib.sh) and $OUT_DIR/vibe-bridge.meta.json {version, description, asset, sha256}.
 # Shared mechanics: scripts/release-lib.sh (ap_release_pack).
 set -eu
 PACK_DIR=$(cd "$(dirname "$0")/.." && pwd)

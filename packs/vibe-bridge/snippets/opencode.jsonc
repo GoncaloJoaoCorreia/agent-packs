@@ -1,18 +1,18 @@
-// Sample repo-level OpenCode config for the vibe-acp pack.
-// With the pack installed, the plugin in <config>/plugins/vibe-acp/ registers the provider
+// Sample repo-level OpenCode config for the vibe-bridge pack.
+// With the pack installed, the plugin in <config>/plugins/vibe-bridge/ registers the provider
 // automatically — this snippet is only needed to pin the default model or to load the plugin
 // from a repo-level .opencode/ directory instead (then adjust the file:// paths).
 {
   "$schema": "https://opencode.ai/config.json",
   // Select a discovered model, e.g. "vibe/mistral-large-4-0". Run /models to list them.
   "model": "vibe/mistral-large-4-0",
-  "plugins": [{ "package": "./plugins/vibe-acp" }],
+  "plugins": [{ "package": "./plugins/vibe-bridge" }],
   "providers": {
     "vibe": {
       "name": "Mistral Vibe (ACP)",
       // The provider runtime ships inside the plugin; load it through the aisdk: bridge.
       // (Point at the entry file — a bare directory does not resolve in the compiled runtime.)
-      "package": "aisdk:file://./plugins/vibe-acp/provider/src/index.ts"
+      "package": "aisdk:file://./plugins/vibe-bridge/provider/src/index.ts"
     }
   }
 }

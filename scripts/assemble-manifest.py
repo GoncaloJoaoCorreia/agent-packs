@@ -3,7 +3,7 @@
 
 Usage:
   assemble-manifest.py --out manifest.json --release vX.Y.Z --artifacts DIR \
-      --changed "open-driver vibe-acp" [--prev-manifest prev.json]
+      --changed "open-driver vibe-bridge" [--prev-manifest prev.json]
 
 For every pack in --changed, reads DIR/<name>.meta.json ({version, description, asset,
 sha256}) written by packs/<name>/scripts/release.sh. For every other pack discovered under

@@ -1,5 +1,5 @@
 {
-  "name": "@agent-packs/vibe-acp-provider",
+  "name": "@agent-packs/vibe-bridge-provider",
   "version": "0.1.0",
   "private": true,
   "type": "module",

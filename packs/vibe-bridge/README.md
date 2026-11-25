@@ -1,4 +1,4 @@
-# vibe-acp pack
+# vibe-bridge pack
 
 Use a **Mistral Vibe subscription from OpenCode** by driving the `vibe-acp` binary over the
 Agent Client Protocol and exposing it as a normal `vibe/<model>` provider — **no fork of
@@ -12,10 +12,10 @@ M1 spike notes: [../vibe/docs/acp-spike/notes.md](../vibe/docs/acp-spike/notes.m
 ## Install
 
 ```sh
-./install.sh vibe-acp          # or: install.sh all
+./install.sh vibe-bridge          # or: install.sh all
 ```
 
-Installs `plugins/vibe-acp/` into the OpenCode config dir
+Installs `plugins/vibe-bridge/` into the OpenCode config dir
 (`${XDG_CONFIG_HOME:-~/.config}/opencode`), which OpenCode auto-discovers — no config edit
 needed. `--dest DIR` targets a different config dir; `--no-plugin` skips the plugin.
 
@@ -31,9 +31,9 @@ select), pick one or set `"model": "vibe/<model>"` — see `snippets/opencode.js
 ## Layout
 
 ```
-packs/vibe-acp/
+packs/vibe-bridge/
   pack.conf                          # pack manifest (payload: plugins/, ship-only: snippets/)
-  plugins/vibe-acp/
+  plugins/vibe-bridge/
     index.ts                         # server plugin: provider transform, model discovery, vibe login
     package.json
     provider/                        # provider runtime package (loaded via aisdk:file://…/src/index.ts)
@@ -50,7 +50,7 @@ packs/vibe-acp/
 ## Decisions (recorded per G-87)
 
 - **`file://` inside the installed pack, not npm** — zero-publish path; the provider package is
-  referenced as `aisdk:file://<config>/plugins/vibe-acp/provider/src/index.ts` (entry file — a
+  referenced as `aisdk:file://<config>/plugins/vibe-bridge/provider/src/index.ts` (entry file — a
   bare directory does not resolve in the compiled CLI runtime). Publishing to npm is possible
   later.
 - **Host-resolved dependencies**: `@opencode/plugin` and `@ai-sdk/provider` (type-only) resolve
@@ -68,6 +68,6 @@ packs/vibe-acp/
 
 ```sh
 sh scripts/validate.sh                     # root dispatcher runs this pack's validator too
-sh packs/vibe-acp/scripts/validate.sh      # JSON/TS checks, provider unit tests, throwaway install
-cd packs/vibe-acp/plugins/vibe-acp/provider && npm test
+sh packs/vibe-bridge/scripts/validate.sh      # JSON/TS checks, provider unit tests, throwaway install
+cd packs/vibe-bridge/plugins/vibe-bridge/provider && npm test
 ```

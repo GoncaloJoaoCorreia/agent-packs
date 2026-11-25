@@ -1,4 +1,4 @@
-# @agent-packs/vibe-acp-provider
+# @agent-packs/vibe-bridge-provider
 
 The provider runtime package for Mistral Vibe over ACP (plan §2 piece 1, G-86). OpenCode loads
 it through the `aisdk:` package bridge:
@@ -8,7 +8,7 @@ it through the `aisdk:` package bridge:
   "providers": {
     "vibe": {
       "name": "Mistral Vibe (ACP)",
-      "package": "aisdk:file:///abs/path/to/plugins/vibe-acp/provider"
+      "package": "aisdk:file:///abs/path/to/plugins/vibe-bridge/provider"
     }
   }
 }
