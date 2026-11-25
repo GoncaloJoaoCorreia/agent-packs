@@ -9,7 +9,7 @@
 #
 #   release (standalone, e.g. `curl -fsSL <raw-url>/install.sh | sh`): fetches the latest
 #           release's manifest.json from releases/latest/download/ (0 API calls), then per
-#           selected pack downloads its packs/<name>.tar.gz from the release, verifies the
+#           selected pack downloads its <name>.tar.gz from the release, verifies the
 #           sha256 against the manifest entry, extracts, and dispatches to the pack's
 #           vendored install.sh. PACK@<version> pins a release tag (1 paginated API call to
 #           list releases + direct manifest downloads).
@@ -32,7 +32,7 @@
 #   --no-plugin skip every pack's plugins/ payload dir
 #
 # Release payload: each GitHub release carries manifest.json ({schema, release, packs:
-# {<name>: {version, description, asset, sha256}}}) plus one packs/<name>.tar.gz per pack
+# {<name>: {version, description, asset, sha256}}}) plus one <name>.tar.gz per pack
 # (top-level <name>/ with payload + pack.conf + install.sh + vendored install-lib.sh).
 # Each pack is described by packs/<name>/pack.conf (metadata) and installed by
 # packs/<name>/install.sh — see packs/README.md for the contract.
@@ -78,7 +78,7 @@ Usage: install.sh [PACK[@VERSION] ...] [--source|--release] [--dest DIR] [--no-p
   --dest DIR  install target (single pack only; default: the pack's PACK_DEFAULT_DEST)
   --no-plugin skip each pack's plugins/ payload dir
 
-Release payload: manifest.json + packs/<name>.tar.gz per pack from releases/latest/download/
+Release payload: manifest.json + <name>.tar.gz per pack from releases/latest/download/
 (or releases/download/<tag>/ for PACK@<version>).
 EOF
 }

@@ -156,7 +156,7 @@ ap_release_pack() {
       printf '%s' "${PACK_DESCRIPTION:-}"
     )
   )
-  python3 - "$_ap_out/$_ap_pack.meta.json" "$_ap_version" "$_ap_desc" "packs/$_ap_pack.tar.gz" "$_ap_sha" <<'PY'
+  python3 - "$_ap_out/$_ap_pack.meta.json" "$_ap_version" "$_ap_desc" "$_ap_pack.tar.gz" "$_ap_sha" <<'PY'
 import json, sys
 out, version, desc, asset, sha = sys.argv[1:6]
 with open(out, "w", encoding="utf-8") as f:

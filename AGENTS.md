@@ -65,7 +65,7 @@ scripts/
   tools (a forge CLI `gh`/`glab`/`forgejo-cli`, `shellcheck`) only produce a warning.
 - **Release assets convention:** each GitHub release carries `manifest.json`
   (`{schema, release, packs: {<name>: {version, description, asset, sha256}}}`) plus one
-  `packs/<name>.tar.gz` per pack (top-level `<name>/` with payload + `pack.conf` +
+  `<name>.tar.gz` per pack (top-level `<name>/` with payload + `pack.conf` +
   `install.sh` + a vendored `install-lib.sh`). The installer fetches the manifest
   unauthenticated from `releases/latest/download/` (0 API calls), and
   `releases/download/<tag>/` for `PACK@<version>` — the repo is public, no token needed.
@@ -102,7 +102,7 @@ scripts/
   pack, infra paths → all packs) → per changed pack, `packs/<name>/scripts/release.sh`
   computes the pack version from conventional commits since the last tag (`feat`→minor,
   `fix`→patch, `!`/`BREAKING CHANGE:`→major, highest wins, no-prefix→patch, seeded from
-  the latest `v*` tag) and builds `packs/<name>.tar.gz` + a meta fragment →
+  the latest `v*` tag) and builds `<name>.tar.gz` + a meta fragment →
   `scripts/assemble-manifest.py` merges them with carried-over unchanged packs (every
   release is self-contained) → tag + push → `gh release create` with `manifest.json` +
   all pack tarballs → self-test (checksums vs manifest, payload hygiene, non-interactive

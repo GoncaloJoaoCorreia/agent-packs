@@ -23,7 +23,7 @@ Linear G-83):
   `--no-plugin` skips it). Meta files `agent-packs.vibe-bridge.{version,manifest}` drive stale-file
   cleanup on reinstall (the pre-rename `agent-packs.vibe-acp.*` meta files are cleaned up once).
   `snippets/` is ship-only. The release tarball
-  (`packs/vibe-bridge.tar.gz`) strips `scripts/`, `docs/`, and this file automatically and
+  (`vibe-bridge.tar.gz`) strips `scripts/`, `docs/`, and this file automatically and
   carries `install.sh` + a vendored `install-lib.sh`.
 - `sh scripts/validate.sh` (root) auto-runs `packs/vibe-bridge/scripts/validate.sh`: pack.conf
   syntax, JSON validity, plugin/provider path references, the `create*` export, the provider

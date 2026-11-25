@@ -83,7 +83,7 @@ nothing) carries:
     "release": "vX.Y.Z",
     "packs": {
       "<name>": {
-        "asset": "packs/<name>.tar.gz",
+        "asset": "<name>.tar.gz",
         "description": "<PACK_DESCRIPTION from pack.conf>",
         "sha256": "<sha256 of the tarball>",
         "version": "<per-pack version, e.g. v2.3.0>"
@@ -98,7 +98,7 @@ nothing) carries:
   `vX.Y.Z` is only a release cursor. The installer parses this fixed layout with awk
   (indent=2, sorted keys, `ensure_ascii=False`) — keep `assemble-manifest.py` output in
   exactly this shape.
-- `packs/<name>.tar.gz` per pack — top-level `<name>/` with the payload + `pack.conf` +
+- `<name>.tar.gz` per pack — top-level `<name>/` with the payload + `pack.conf` +
   `install.sh` + a vendored `install-lib.sh` (repo-only `scripts/`, `docs/`, pack-level
   `README.md`/`AGENTS.md`, plugin `test/` dirs, plus any `node_modules/`, `.agent/`,
   `__pycache__/` stripped). Unchanged packs are carried over from the previous release,

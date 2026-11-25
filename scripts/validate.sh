@@ -198,8 +198,8 @@ echo "== assemble-manifest.py unit test (changed + carried-over entries) =="
 am_tmp="$smoke_tmp/assemble"
 mkdir -p "$am_tmp/artifacts/packs" "$am_tmp/repo/packs/alpha" "$am_tmp/repo/packs/beta"
 touch "$am_tmp/repo/packs/alpha/pack.conf" "$am_tmp/repo/packs/beta/pack.conf"
-printf '%s\n' '{"version":"1.2.3","description":"alpha pack","asset":"packs/alpha.tar.gz","sha256":"deadbeef"}' > "$am_tmp/artifacts/alpha.meta.json"
-printf '%s\n' '{"schema":1,"release":"v9.9.8","packs":{"beta":{"version":"0.1.0","description":"beta pack","asset":"packs/beta.tar.gz","sha256":"cafe"}}}' > "$am_tmp/prev.json"
+printf '%s\n' '{"version":"1.2.3","description":"alpha pack","asset":"alpha.tar.gz","sha256":"deadbeef"}' > "$am_tmp/artifacts/alpha.meta.json"
+printf '%s\n' '{"schema":1,"release":"v9.9.8","packs":{"beta":{"version":"0.1.0","description":"beta pack","asset":"beta.tar.gz","sha256":"cafe"}}}' > "$am_tmp/prev.json"
 python3 scripts/assemble-manifest.py --out "$am_tmp/manifest.json" --release v9.9.9 \
   --artifacts "$am_tmp/artifacts" --changed alpha --repo-root "$am_tmp/repo" \
   --prev-manifest "$am_tmp/prev.json" >/dev/null
@@ -212,7 +212,7 @@ assert m["packs"]["alpha"]["version"] == "1.2.3", m
 assert m["packs"]["beta"]["version"] == "0.1.0", m  # carried over from the previous release
 for name, e in m["packs"].items():
     assert set(e) == {"asset", "description", "sha256", "version"}, (name, e)
-    assert e["asset"] == f"packs/{name}.tar.gz", (name, e)
+    assert e["asset"] == f"{name}.tar.gz" and "/" not in e["asset"], (name, e)
 print("ok: manifest schema (schema/release/packs + entry keys) and changed + carried-over entries")
 PY
 
@@ -233,24 +233,25 @@ REPO_ROOT="$PWD" OUT_DIR="$e2e/artifacts" sh packs/open-driver/scripts/release.s
 python3 scripts/assemble-manifest.py --out "$e2e/artifacts/manifest.json" --release v9.9.9 \
   --artifacts "$e2e/artifacts" --changed open-driver --repo-root "$PWD" >/dev/null
 # lay out the fake release base (latest/download + download/<tag>) and fake releases API
-mkdir -p "$e2e/rel/latest/download/packs" "$e2e/rel/download/v9.9.9/packs" "$e2e/api"
+mkdir -p "$e2e/rel/latest/download" "$e2e/rel/download/v9.9.9" "$e2e/api"
 cp "$e2e/artifacts/manifest.json" "$e2e/rel/latest/download/manifest.json"
 cp "$e2e/artifacts/manifest.json" "$e2e/rel/download/v9.9.9/manifest.json"
-cp "$e2e/artifacts/packs/open-driver.tar.gz" "$e2e/rel/latest/download/packs/"
-cp "$e2e/artifacts/packs/open-driver.tar.gz" "$e2e/rel/download/v9.9.9/packs/"
+# release assets are bare filenames (gh upload keeps only the basename)
+cp "$e2e/artifacts/packs/open-driver.tar.gz" "$e2e/rel/latest/download/"
+cp "$e2e/artifacts/packs/open-driver.tar.gz" "$e2e/rel/download/v9.9.9/"
 # an older release tag (v9.9.8) with the same tarball but an older pack version — used by
 # the pinned and TUI version-cycling tests
-mkdir -p "$e2e/rel/download/v9.9.8/packs"
+mkdir -p "$e2e/rel/download/v9.9.8"
 sha_old=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["packs"]["open-driver"]["sha256"])' "$e2e/artifacts/manifest.json")
 python3 - "$e2e/rel/download/v9.9.8/manifest.json" "$sha_old" <<'PY'
 import json, sys
 out, sha = sys.argv[1], sys.argv[2]
-entry = {"asset": "packs/open-driver.tar.gz", "description": "open-driver pack",
+entry = {"asset": "open-driver.tar.gz", "description": "open-driver pack",
          "sha256": sha, "version": "v2.1.1"}
 json.dump({"schema": 1, "release": "v9.9.8", "packs": {"open-driver": entry}},
           open(out, "w"), indent=2, sort_keys=True, ensure_ascii=False)
 PY
-cp "$e2e/artifacts/packs/open-driver.tar.gz" "$e2e/rel/download/v9.9.8/packs/"
+cp "$e2e/artifacts/packs/open-driver.tar.gz" "$e2e/rel/download/v9.9.8/"
 # pretty-printed like the real GitHub API (one "tag_name" per line — resolve_tag parses per line)
 printf '%s\n' '[' '  {' '    "tag_name": "v9.9.9"' '  },' '  {' '    "tag_name": "v9.9.8"' '  }' ']' > "$e2e/api/releases"
 # tarball hygiene: pack installer + vendored lib ship, repo-only scripts/ stripped
