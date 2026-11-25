@@ -16,20 +16,22 @@ Tests + validation run in CI on every PR (`.github/workflows/test.yml`).
 ## Layout
 
 ```
-install.sh                      # self-contained installer (pick packs, install into config dirs)
+install.sh                      # installer ORCHESTRATOR (mode detection, pack picker, dispatch)
 packs/
-  README.md                     # the pack contract (pack.conf keys, installer behavior, releases)
+  README.md                     # the pack contract (pack.conf metadata keys, pack-owned install.sh)
   opencode/
-    pack.conf                   # pack manifest sourced by install.sh (payload, prereqs, meta prefix)
+    pack.conf                   # pack metadata sourced by install.sh + the pack's install.sh
+    install.sh                  # pack-owned installer (payload dirs, hooks, cleanup)
     agents/  commands/  plugins/  agent-scripts/  skills/  snippets/   # payload (installed into
                                   #   the config dir root; snippets/ is ship-only; plugins/
                                   #   skipped by --no-plugin)
     scripts/                    # repo-only dev tooling (validate.sh, validate-driver-viz.sh,
                                 #   driver-viz-render-test/, screenshot-driver-viz.py) — NOT shipped
     docs/  README.md  AGENTS.md # repo-only docs — NOT shipped
-  vibe-acp/  vibe-skills/       # same contract: pack.conf + payload dirs (+ repo-only scripts/ docs/)
+  vibe-acp/  vibe-skills/       # same contract: pack.conf + install.sh + payload dirs (+ repo-only scripts/ docs/)
 scripts/
-  validate.sh                   # repo-wide dispatcher: install.sh syntax, pack.conf sanity,
+  install-lib.sh                # shared install mechanics, sourced by every packs/<name>/install.sh
+  validate.sh                   # repo-wide dispatcher: installer syntax, pack contract, smoke installs,
                                 #   the opencode pack's agent-scripts tests, every packs/*/scripts/validate*.sh
 .github/workflows/
   test.yml                      # PR/push validation
@@ -54,8 +56,9 @@ scripts/
   tools (a forge CLI `gh`/`glab`/`forgejo-cli`, `shellcheck`) only produce a warning.
 - **Release assets convention:** each GitHub release carries `agent-packs.tar.gz` +
   `agent-packs.tar.gz.sha256` (one top-level `agent-packs/` dir with `packs/`
-  `install.sh LICENSE`; the installer fetches them unauthenticated from
-  `releases/latest/download/` — the repo is public), plus a **legacy alias**
+  `install.sh scripts/install-lib.sh LICENSE`; the installer fetches them
+  unauthenticated from `releases/latest/download/` — the repo is public), plus a
+  **legacy alias**
   `opencode-agents.tar.gz` (old flat layout) + `SHA256SUMS` listing only that legacy
   asset, so pre-rename installers still served from the old raw URL keep working.
   **Releases are cut by the Release workflow (see Releases below), which builds and
@@ -104,13 +107,15 @@ pack ships that directory as payload, installed at `<config>/skills/driver-conve
 
 ## Extension points
 
-- **New pack**: `mkdir packs/<name>/` + `pack.conf` (contract in `packs/README.md`), payload
-  dirs, optional `packs/<name>/scripts/validate*.sh` (picked up by the root dispatcher
-  automatically). Packs are self-contained — payload lives under `packs/<name>/` (there is no
-  `shared/` dir). If a future pack ever needs code from elsewhere in the payload root,
-  `PACK_COMPOSE` (`src:dst`, src relative to the payload root) is still supported by
-  install.sh — currently unused. Nothing else to wire: `--list`, the picker, the release
-  payload and validation all discover packs from `packs/*/pack.conf`.
+- **New pack**: `mkdir packs/<name>/` + `pack.conf` (metadata only — contract in
+  `packs/README.md`) + `packs/<name>/install.sh` (the pack-owned installer: payload dirs
+  via `PACK_PAYLOAD_DIRS`, `pack_extra_checks()`/`pack_next_steps()` hooks, update cleanup;
+  copy an existing pack's as the template — it sources `scripts/install-lib.sh` via
+  `AGENT_PACKS_ROOT`/`AGENT_PACKS_INSTALL_LIB`), payload dirs, optional
+  `packs/<name>/scripts/validate*.sh` (picked up by the root dispatcher automatically).
+  Packs are self-contained — payload lives under `packs/<name>/` (there is no `shared/`
+  dir). Nothing else to wire: `--list`, the picker, the release payload and validation
+  all discover packs from `packs/*/pack.conf`.
 - **New phase** (opencode pack): add `packs/opencode/agents/driver/<phase>.md`,
   `packs/opencode/commands/phases/<phase>.md`, and a row in the phase registry in
   `packs/opencode/agents/driver.md` (section 6) — plus the mirrored row in
@@ -120,8 +125,8 @@ pack ships that directory as payload, installed at `<config>/skills/driver-conve
 - **New `/driver` flag**: parse it in section 1 of `agents/driver.md`, store in `state.params`.
 - **New agent-script**: add it under `packs/opencode/agent-scripts/` with unit tests in
   `packs/opencode/agent-scripts/tests/` (wired into `run-tests.sh`), and mirror it in
-  `packs/opencode/pack.conf` (the `agent-scripts` payload dir already covers the install
-  side), the opencode pack validator (asset list + syntax/tests section),
+  `packs/opencode/install.sh` (`PACK_PAYLOAD_DIRS` already covers the install side), the
+  opencode pack validator (asset list + syntax/tests section),
   `.github/workflows/release.yml` (self-test diff of `packs/opencode/agent-scripts`),
   plus the pack README/AGENTS.md and an invocation/exit-code entry in
   `packs/opencode/skills/driver-conventions/SKILL.md` §8.
