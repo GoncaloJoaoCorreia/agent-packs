@@ -31,43 +31,50 @@ packs/
   vibe-acp/  vibe-skills/       # same contract: pack.conf + install.sh + payload dirs (+ repo-only scripts/ docs/)
 scripts/
   install-lib.sh                # shared install mechanics, sourced by every packs/<name>/install.sh
-  validate.sh                   # repo-wide dispatcher: installer syntax, pack contract, smoke installs,
+                                #   (vendored into each pack tarball at release time)
+  release-lib.sh                # shared release mechanics (path classification, conventional-commit
+                                #   version bumps, pack tarball builder ap_release_pack)
+  release-detect.sh             # diff classifier: changed packs / infra / docs-only for a release
+  assemble-manifest.py          # assembles a release's manifest.json
+  validate.sh                   # repo-wide dispatcher: installer + release script syntax, pack contract,
+                                #   smoke installs, release-lib unit tests, offline release-mode E2E,
                                 #   the opencode pack's agent-scripts tests, every packs/*/scripts/validate*.sh
 .github/workflows/
   test.yml                      # PR/push validation
-  release.yml                   # manual release pipeline (see Releases)
+  release.yml                   # manifest release pipeline — runs on pushes to main (see Releases)
 ```
 
 ## Install / verify
 
 - `./install.sh` is dual-mode and auto-detects: inside this checkout (`.git/` + `packs/`
   next to the script) it installs by **copying from source** — nothing is built. Run
-  standalone (e.g. `curl …/install.sh | sh`, where `$0` is not a file) it downloads the
-  latest GitHub release payload and installs from that. Flags: `--source` / `--release`
-  force a mode, `--dest DIR` overrides the target of a single pack (each pack otherwise
-  uses its `PACK_DEFAULT_DEST`), `--no-plugin` skips every pack's `plugins/` payload dir,
-  `--list` prints the packs. With no pack argument the installer asks interactively on a
-  TTY (reads `/dev/tty`, so it works with `curl | sh`) and accepts multiple selections;
-  without a TTY it installs the default pack (`opencode` when present). OpenCode reloads
-  config automatically, no restart. **Re-run `./install.sh` after every edit here.**
+  standalone (e.g. `curl …/install.sh | sh`, where `$0` is not a file) it installs from
+  the latest GitHub release (manifest-driven). Packs are selected as `PACK[@VERSION] ...`
+  or `all`. Flags: `--source` / `--release` force a mode, `--dest DIR` overrides the
+  target of a single pack (each pack otherwise uses its `PACK_DEFAULT_DEST`),
+  `--no-plugin` skips every pack's `plugins/` payload dir, `--list` prints the packs with
+  versions, `--plain` forces the numbered prompt. With no pack argument on a TTY the
+  installer opens an ANSI checkbox TUI (reads `/dev/tty`, so it works with `curl | sh`;
+  arrows navigate, space toggles, left/right cycles the pack's version, enter confirms);
+  without a TTY and without pack args it **exits 2** (never picks a default silently).
+  OpenCode reloads config automatically, no restart. **Re-run `./install.sh` after every
+  edit here.**
 - **Prerequisite check:** per pack, `PACK_PREREQS` tools must execute (the opencode pack
   requires `python3` and `git` — the shipped `packs/opencode/agent-scripts/` need both); the
   installer hard-fails with a clear message before touching any config dir. Optional
   tools (a forge CLI `gh`/`glab`/`forgejo-cli`, `shellcheck`) only produce a warning.
-- **Release assets convention:** each GitHub release carries `agent-packs.tar.gz` +
-  `agent-packs.tar.gz.sha256` (one top-level `agent-packs/` dir with `packs/`
-  `install.sh scripts/install-lib.sh LICENSE`; the installer fetches them
-  unauthenticated from `releases/latest/download/` — the repo is public), plus a
-  **legacy alias**
-  `opencode-agents.tar.gz` (old flat layout) + `SHA256SUMS` listing only that legacy
-  asset, so pre-rename installers still served from the old raw URL keep working.
-  **Releases are cut by the Release workflow (see Releases below), which builds and
-  uploads these assets** — don't hand-upload them.
-- The release workflow strips repo-only files from the payload: `packs/*/scripts/`,
-  `packs/*/docs/`, pack-level `README.md`/`AGENTS.md`, `test/` dirs under `packs/*/plugins/`,
-  plus any `node_modules/`, `.agent/` and `__pycache__/` anywhere. The installer additionally
-  strips `.agent/`/`__pycache__/` from everything it copies and never lists them in the
-  manifest.
+- **Release assets convention:** each GitHub release carries `manifest.json`
+  (`{schema, release, packs: {<name>: {version, description, asset, sha256}}}`) plus one
+  `packs/<name>.tar.gz` per pack (top-level `<name>/` with payload + `pack.conf` +
+  `install.sh` + a vendored `install-lib.sh`). The installer fetches the manifest
+  unauthenticated from `releases/latest/download/` (0 API calls), and
+  `releases/download/<tag>/` for `PACK@<version>` — the repo is public, no token needed.
+  **Releases are cut automatically by the release workflow on pushes to `main` (see
+  Releases below)** — don't hand-upload assets.
+- Per-pack tarballs strip repo-only files: `scripts/`, `docs/`, pack-level
+  `README.md`/`AGENTS.md`, `test/` dirs under `plugins/`, plus any `node_modules/`,
+  `.agent/` and `__pycache__/` anywhere. The installer additionally strips
+  `.agent/`/`__pycache__/` from everything it copies and never lists them in the manifest.
 - Each pack install writes `<PACK_META_PREFIX>.version` + `<PACK_META_PREFIX>.manifest`
   into the pack's config dir; the manifest drives stale-file cleanup on reinstall
   (files listed there under the pack's managed dirs that no longer exist upstream are
@@ -83,19 +90,30 @@ scripts/
 
 ## Releases
 
-- Cut a release with the manual **Release** workflow (`.github/workflows/release.yml`,
-  "Run workflow" button on `main`). Optional `version` input (`vX.Y.Z` or `X.Y.Z`; must be
-  new and greater than the latest tag); empty = auto patch-bump of the latest `v*` tag.
-- The workflow: runs `./scripts/validate.sh` → tags + pushes `main` → builds
-  `agent-packs.tar.gz` + `SHA256SUMS` → creates the GitHub release with an auto changelog
-  → self-tests (download, checksum, payload hygiene, diff vs checkout,
-  `install.sh --release` into a temp dir, `--list`, legacy-manifest cleanup).
+- Every push to `main` that touches `packs/**`, `install.sh`, `scripts/**` or
+  `.github/workflows/**` cuts one release automatically (`.github/workflows/release.yml`;
+  docs-only diffs release nothing). `workflow_dispatch` stays for manual re-runs with an
+  optional `version` input (`vX.Y.Z`); empty = auto patch-bump of the latest `v*` tag.
+  The repo tag `vX.Y.Z` is only a **release cursor** — per-pack versions live in the
+  release's `manifest.json`.
+- The pipeline: runs `./scripts/validate.sh` → `scripts/release-detect.sh` classifies the
+  diff (baseline = previous `main` SHA, fallback latest `v*` tag; pack payload paths → that
+  pack, infra paths → all packs) → per changed pack, `packs/<name>/scripts/release.sh`
+  computes the pack version from conventional commits since the last tag (`feat`→minor,
+  `fix`→patch, `!`/`BREAKING CHANGE:`→major, highest wins, no-prefix→patch, seeded from
+  the latest `v*` tag) and builds `packs/<name>.tar.gz` + a meta fragment →
+  `scripts/assemble-manifest.py` merges them with carried-over unchanged packs (every
+  release is self-contained) → tag + push → `gh release create` with `manifest.json` +
+  all pack tarballs → self-test (checksums vs manifest, payload hygiene, non-interactive
+  `install.sh --release` of each changed pack into a temp dir, `--list`).
 - Run `./scripts/validate.sh` locally before pushing release-relevant changes.
 - The workflow operates on remote `main` — commit + push first, or the release ships
   stale content.
 - **Repo rename:** the repo was renamed `opencode-agents` → `agent-packs`; GitHub
-  redirects git/raw/release URLs of the old name, so old `curl …/opencode-agents/…`
-  one-liners keep working.
+  redirects git/raw URLs of the old name. Note: new releases no longer carry the legacy
+  pre-rename tarball asset (G-113 decision — no backwards compat with pre-rename
+  one-liners), so pre-rename installers only keep working against old releases; the
+  opencode pack's local legacy-manifest cleanup stays.
 
 ## Contracts — one source of truth
 
@@ -110,12 +128,15 @@ pack ships that directory as payload, installed at `<config>/skills/driver-conve
 - **New pack**: `mkdir packs/<name>/` + `pack.conf` (metadata only — contract in
   `packs/README.md`) + `packs/<name>/install.sh` (the pack-owned installer: payload dirs
   via `PACK_PAYLOAD_DIRS`, `pack_extra_checks()`/`pack_next_steps()` hooks, update cleanup;
-  copy an existing pack's as the template — it sources `scripts/install-lib.sh` via
-  `AGENT_PACKS_ROOT`/`AGENT_PACKS_INSTALL_LIB`), payload dirs, optional
-  `packs/<name>/scripts/validate*.sh` (picked up by the root dispatcher automatically).
-  Packs are self-contained — payload lives under `packs/<name>/` (there is no `shared/`
-  dir). Nothing else to wire: `--list`, the picker, the release payload and validation
-  all discover packs from `packs/*/pack.conf`.
+  copy an existing pack's as the template — it sources the vendored `install-lib.sh` next to
+  it in release tarballs, or `scripts/install-lib.sh` via `AGENT_PACKS_ROOT` in a checkout)
+  + `packs/<name>/scripts/release.sh` (pack-owned release builder — thin wrapper over
+  `ap_release_pack` in `scripts/release-lib.sh`; add pack-specific steps like cloud
+  publishing after the call), payload dirs, optional `packs/<name>/scripts/validate*.sh`
+  (picked up by the root dispatcher automatically). Packs are self-contained — payload
+  lives under `packs/<name>/` (there is no `shared/` dir). Nothing else to wire: `--list`,
+  the TUI picker, the release pipeline and validation all discover packs from
+  `packs/*/pack.conf`.
 - **New phase** (opencode pack): add `packs/opencode/agents/driver/<phase>.md`,
   `packs/opencode/commands/phases/<phase>.md`, and a row in the phase registry in
   `packs/opencode/agents/driver.md` (section 6) — plus the mirrored row in
@@ -127,7 +148,8 @@ pack ships that directory as payload, installed at `<config>/skills/driver-conve
   `packs/opencode/agent-scripts/tests/` (wired into `run-tests.sh`), and mirror it in
   `packs/opencode/install.sh` (`PACK_PAYLOAD_DIRS` already covers the install side), the
   opencode pack validator (asset list + syntax/tests section),
-  `.github/workflows/release.yml` (self-test diff of `packs/opencode/agent-scripts`),
+  `.github/workflows/release.yml` (self-test: the opencode tarball ships `agent-scripts/`
+  and the release-mode install asserts the script lands in the temp config),
   plus the pack README/AGENTS.md and an invocation/exit-code entry in
   `packs/opencode/skills/driver-conventions/SKILL.md` §8.
 
@@ -156,4 +178,5 @@ pack ships that directory as payload, installed at `<config>/skills/driver-conve
   prompt instead. Precedent: `detect-forge.sh` + `driver-state.py` (G-20 / PR #1); the
   mechanism and the mandate live in `packs/opencode/skills/driver-conventions/SKILL.md` §8.
   Inline logic in a prompt is only for one-off, phase-specific steps.
-- The installer prompt must read from `/dev/tty` (with `curl | sh`, stdin is the script).
+- The installer's TUI/prompt must read from `/dev/tty` (with `curl | sh`, stdin is the
+  script); with no TTY and no pack args it exits 2 instead of guessing.

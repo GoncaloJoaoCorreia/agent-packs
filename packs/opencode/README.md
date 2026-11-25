@@ -37,10 +37,11 @@ curl -fsSL https://raw.githubusercontent.com/GoncaloJoaoCorreia/agent-packs/main
 > The final `pr` phase needs an authenticated forge CLI to push the branch and open the
 > PR/MR for you — `gh` for GitHub, `glab` for GitLab, `forgejo-cli` for Forgejo — see step 4 below.
 
-The installer downloads the latest GitHub release payload (`agent-packs.tar.gz`),
-verifies it against the release's `SHA256SUMS`, lists the available packs and asks which
-to install (multiple selectable; without a TTY it installs the default pack `opencode`, or
-pass pack names / `all` explicitly — see `--list`), then installs this pack's payload —
+The installer fetches the latest release's `manifest.json`, lists the available packs with
+their versions in a checkbox TUI (or `--plain` numbered prompt), and asks which to install
+(multiple selectable; pass pack names / `all` explicitly to skip the prompt — see `--list`;
+no TTY + no args exits with an error). It downloads this pack's `packs/opencode.tar.gz`,
+verifies its sha256 against the manifest, and installs this pack's payload —
 `agents/`, `commands/`, `plugins/`, `agent-scripts/`, `skills/` —
 into `~/.config/opencode/` (or `$XDG_CONFIG_HOME/opencode`). OpenCode reloads config
 automatically — no restart needed. Pass `--no-plugin` to skip the driver-viz sidebar
@@ -66,7 +67,7 @@ Re-run it after pulling changes.
   installed copies.
 - **Driver helper scripts.** `agent-scripts/` installs to
   `${XDG_CONFIG_HOME:-$HOME/.config}/opencode/agent-scripts/` (shipped as this pack's
-  payload, see `pack.conf` `PACK_PAYLOAD`) and holds the four scripts
+  payload, see `install.sh` `PACK_PAYLOAD_DIRS`) and holds the four scripts
   the driver agents call from there: `detect-forge.sh` (forge detection for the `pr` phase,
   mirroring `skills/driver-conventions/SKILL.md` §7.1), `driver-state.py`
   (atomic, merge-never-clobber access to `.plan/<slug>/state.json`),

@@ -25,20 +25,21 @@ plugin, both including the agent-scripts unit suite).
   checked per tool before anything is installed — the shipped `agent-scripts/`
   need both; the installer hard-fails with a clear message otherwise. Optional tools (a
   forge CLI `gh`/`glab`/`forgejo-cli`, `shellcheck`) only produce a warning when absent.
-- **Release assets convention:** each GitHub release carries exactly `agent-packs.tar.gz`
-  (one top-level `agent-packs/` dir with `packs/ install.sh LICENSE`; this pack
-  ships as `packs/opencode/` with `pack.conf` + payload dirs, minus repo-only `scripts/`,
-  `docs/`, `README.md`, `AGENTS.md`) and `SHA256SUMS` (sha256sum format). The installer
-  fetches them unauthenticated from `releases/latest/download/` (the repo is public).
-  **Releases are cut by the Release workflow (see Releases below), which builds and uploads
-  these assets** — don't hand-upload them.
+- **Release assets convention:** each GitHub release carries a `manifest.json` (per-pack
+  `version`/`description`/`asset`/`sha256`) plus one `packs/<name>.tar.gz` per pack; this
+  pack ships as `packs/opencode.tar.gz` (top-level `opencode/` with `pack.conf` +
+  `install.sh` + vendored `install-lib.sh` + payload dirs, minus repo-only `scripts/`,
+  `docs/`, `README.md`, `AGENTS.md`). The installer fetches the manifest unauthenticated
+  from `releases/latest/download/` (the repo is public). **Releases are cut automatically
+  on pushes to `main` by the release workflow (see Releases below)** — don't hand-upload
+  assets.
 - Each install of this pack writes `agent-packs.opencode.version` +
   `agent-packs.opencode.manifest` into the config dir (`PACK_META_PREFIX` in `pack.conf`);
   the manifest drives stale-file cleanup on reinstall, and the legacy pre-rename
   `opencode-agents.manifest` / `opencode-agents.version` are cleaned up once
   (`PACK_LEGACY_MANIFEST` / `PACK_LEGACY_CLEANUP`). Installs only touch the pack's
-  `PACK_PAYLOAD` dirs (`agents/ commands/ plugins/ agent-scripts/ skills/`; `plugins/`
-  only without `--no-plugin`) + those two meta files. `snippets/` is ship-only.
+  `PACK_PAYLOAD_DIRS` in `install.sh` (`agents/ commands/ plugins/ agent-scripts/ skills/`;
+  `plugins/` only without `--no-plugin`) + those two meta files. `snippets/` is ship-only.
 - **`.agent/` and `__pycache__/` inside the payload dirs are excluded** from the release
   tarball and the install (manifest list + `rm -rf` after the copy). OpenCode discovers
   `agents/**/*.md` recursively, so an installed `agents/.agent/*.md` would register as
@@ -46,9 +47,9 @@ plugin, both including the agent-scripts unit suite).
   so this is defense against legacy leftovers in old checkouts. The pack's
   `scripts/validate.sh` regression-tests the exclusion by planting a synthetic `.agent/`
   fixture (in `agents/` and in `skills/driver-conventions/`), running `install.sh --source`
-  into a temp dir, and asserting it is not installed; release.yml's self-test asserts it on
-  the downloaded payload. Re-running the installer also cleans previously installed copies
-  via the manifest stale-file loop.
+  into a temp dir, and asserting it is not installed; the release workflow's self-test
+  greps the downloaded `packs/opencode.tar.gz` for repo-only paths. Re-running the installer
+  also cleans previously installed copies via the manifest stale-file loop.
 - Install is **copy-based on purpose** (`cp -RL`): do NOT symlink these dirs into
   `~/.config/opencode/` or `.opencode/` — OpenCode's discovery skips symlinked agent files
   (e.g. the `agents/driver/plan-thorough.md` symlink placeholder won't register).
@@ -88,9 +89,13 @@ scripts/driver-viz-render-test/  # headless bun render/snapshot tests for the pl
                                   # plugins/ so the release payload never ships its node_modules)
 scripts/screenshot-driver-viz.py  # regenerates docs/driver-viz-sidebar.png (kept out of plugins/ so the
                                   # release payload never ships it — see "driver-viz plugin" below)
-.github/workflows/release.yml  # manual release pipeline (see Releases)
-install.sh                  # dual-mode installer (source checkout vs checksum-verified release)
+.github/workflows/release.yml  # manifest release pipeline — runs on pushes to main (see Releases)
+install.sh                  # pack-owned installer for this pack (called by the root install.sh)
 ```
+
+The repo-root `install.sh` is the orchestrator (TUI/--plain pack picker, `PACK[@version]`
+args, source vs manifest-release mode, per-pack OK/FAILED summary); this pack's install
+logic lives in `packs/opencode/install.sh`.
 
 ## driver-viz plugin
 
@@ -175,16 +180,19 @@ the OpenCode binary.
 
 ## Releases
 
-- Cut a release with the manual **Release** workflow (`.github/workflows/release.yml`,
-  "Run workflow" button on `main`). Optional `version` input (`vX.Y.Z` or `X.Y.Z`; must be
-  new and greater than the latest tag); empty = auto patch-bump of the latest `v*` tag
-  (`v0.1` normalizes to `v0.1.0` → next `v0.1.1`; no tags → `v0.1.0`).
-- The workflow: runs the root `./scripts/validate.sh` (install.sh syntax, pack.conf
-  sanity, the agent-scripts tests, this pack's validators incl. driver-viz) → tags +
-  pushes `main` → builds `agent-packs.tar.gz` + `SHA256SUMS` (the asset convention
-  install.sh expects) → creates the GitHub release with an auto changelog → self-tests
-  (download, checksum, payload hygiene, diff vs checkout, `install.sh --release` into a
-  temp dir, `--list`, legacy-manifest cleanup).
+- Every push to `main` touching `packs/**`, `install.sh`, `scripts/**` or
+  `.github/workflows/**` cuts a release automatically (`.github/workflows/release.yml`);
+  this pack is re-released when its payload changes (or on any infra change). The pack's
+  own `scripts/release.sh` (thin wrapper over `ap_release_pack` in
+  `scripts/release-lib.sh`) computes this pack's version from conventional commits since
+  the last tag and builds `packs/opencode.tar.gz` + its manifest entry.
+- `workflow_dispatch` remains for manual re-runs with an optional `version` input
+  (release-cursor tag only; per-pack versions live in `manifest.json`).
+- The pipeline: root `./scripts/validate.sh` → `scripts/release-detect.sh` → per changed
+  pack `packs/<name>/scripts/release.sh` → `scripts/assemble-manifest.py` → tag + push →
+  `gh release create` with `manifest.json` + all pack tarballs → self-test (checksums vs
+  manifest, payload hygiene, non-interactive `install.sh --release` of each changed pack
+  into a temp dir, `--list`).
 - Run `./scripts/validate.sh` (repo root) locally before pushing release-relevant changes.
 - The workflow operates on remote `main` — commit + push first, or the release ships
   stale content.
@@ -214,10 +222,11 @@ update the schemas too**, and keep README.md's summary in sync.
 - **New agent-script**: add it under `agent-scripts/` with unit tests in
   `agent-scripts/tests/` (wired into `run-tests.sh`), and mirror it in the root
   `scripts/validate.sh` + `packs/opencode/scripts/validate.sh` (asset list + syntax/tests
-  sections), `.github/workflows/release.yml` (payload ships `agent-scripts/` as pack
-  payload; self-test diffs it), plus README/AGENTS.md and an invocation/exit-code entry in
-  `skills/driver-conventions/SKILL.md` §8. `pack.conf`'s `agent-scripts` payload dir
-  already covers the install side.
+  sections), `.github/workflows/release.yml` (the self-test asserts the opencode tarball
+  ships `agent-scripts/` and the release-mode install lands it), plus README/AGENTS.md
+  and an invocation/exit-code entry in
+  `skills/driver-conventions/SKILL.md` §8. The `agent-scripts` entry in this pack's
+  `install.sh` `PACK_PAYLOAD_DIRS` already covers the install side.
 
 ## Gotchas (hard-earned — do not rediscover)
 

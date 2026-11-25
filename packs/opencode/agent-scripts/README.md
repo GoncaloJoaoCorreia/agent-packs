@@ -3,7 +3,7 @@
 Unit-tested automation scripts for the routine "by hand" driver tasks, usable on
 any system with minimal prerequisites. Payload of the **opencode** pack: the repo-root
 `install.sh` copies this directory into the config dir at install time
-(`<config>/agent-scripts/`, see `packs/opencode/pack.conf` `PACK_PAYLOAD`), and
+(`<config>/agent-scripts/`, see `packs/opencode/install.sh` `PACK_PAYLOAD_DIRS`), and
 it ships in the release payload. Installed to:
 
 ```

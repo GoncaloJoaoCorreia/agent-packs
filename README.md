@@ -26,32 +26,39 @@ More harnesses can be added as new packs — see
 curl -fsSL https://raw.githubusercontent.com/GoncaloJoaoCorreia/agent-packs/main/install.sh | sh
 ```
 
-The installer lists the available packs and asks which to install (you can pick several).
-Without a TTY it installs the default pack (`opencode`). To skip the prompt:
+The installer opens a checkbox TUI listing the available packs and their versions (pick
+several; left/right cycles the highlighted pack's version). To skip the prompt:
 
 ```sh
-sh -s -- opencode        # one pack, non-interactive
-sh -s -- all             # every pack
-install.sh --list        # just list the packs
+sh -s -- opencode          # one pack, latest release, non-interactive
+sh -s -- opencode@v2.2.0   # one pack pinned to a release tag
+sh -s -- all               # every pack
+install.sh --list          # just list the packs + versions
+install.sh --plain         # numbered prompt instead of the TUI
 ```
+
+Without a TTY and without pack arguments the installer exits with an error (it never picks
+a default silently); with pack arguments it is fully non-interactive (the CI path).
 
 In a local checkout of this repo, run `./install.sh` instead — it installs straight from
 source (same copy-based install; nothing is built). Re-run it after pulling changes.
 
-Each release carries one `agent-packs.tar.gz` (containing `packs/` +
-`install.sh` + `LICENSE`) plus `SHA256SUMS`; the installer downloads it, verifies the
-checksum, and installs only the packs you selected. Installs are copy-based and write a
-per-pack `<prefix>.version` + `<prefix>.manifest` into the config dir, which drives
+Each GitHub release carries a `manifest.json` (per-pack `version`, `description`, `asset`,
+`sha256`) plus one `packs/<name>.tar.gz` per pack; the installer fetches the manifest from
+`releases/latest/download/`, downloads the selected packs' tarballs, verifies each sha256
+against the manifest, and installs only the packs you selected. Installs are copy-based and
+write a per-pack `<prefix>.version` + `<prefix>.manifest` into the config dir, which drives
 stale-file cleanup on reinstall. The installer requires `python3` and `git` for the
 opencode pack (hard prerequisite — it fails with a clear message otherwise).
 
 ## Repo layout
 
 ```
-install.sh            # self-contained installer: pack picker + per-pack install
-packs/<name>/         # one self-contained pack per harness (pack.conf + payload; scripts/ + docs/ are repo-only)
-scripts/validate.sh   # repo-wide validation dispatcher (CI + local)
-.github/workflows/    # test.yml (PRs), release.yml (manual releases)
+install.sh            # installer: TUI/--plain pack picker + per-pack dispatch (source or release mode)
+packs/<name>/         # one self-contained pack per harness (pack.conf + install.sh + payload; scripts/ + docs/ are repo-only)
+scripts/              # install-lib.sh (shared install mechanics) + release pipeline (release-lib.sh, release-detect.sh,
+                      #   assemble-manifest.py) + validate.sh (repo-wide validation dispatcher, CI + local)
+.github/workflows/    # test.yml (PR/push validation), release.yml (cuts a manifest release on pushes to main)
 ```
 
 See [AGENTS.md](AGENTS.md) for the full layout, contracts, and extension points.

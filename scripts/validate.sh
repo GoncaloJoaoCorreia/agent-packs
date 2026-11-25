@@ -180,10 +180,23 @@ python3 - "$am_tmp/manifest.json" <<'PY'
 import json, sys
 m = json.load(open(sys.argv[1]))
 assert m["schema"] == 1 and m["release"] == "v9.9.9", m
+assert set(m) == {"schema", "release", "packs"}, m
 assert m["packs"]["alpha"]["version"] == "1.2.3", m
 assert m["packs"]["beta"]["version"] == "0.1.0", m  # carried over from the previous release
-print("ok: manifest merges changed + carried-over pack entries")
+for name, e in m["packs"].items():
+    assert set(e) == {"asset", "description", "sha256", "version"}, (name, e)
+    assert e["asset"] == f"packs/{name}.tar.gz", (name, e)
+print("ok: manifest schema (schema/release/packs + entry keys) and changed + carried-over entries")
 PY
+
+echo "== docs: no stale references to the pre-manifest release flow =="
+# .plan/ is gitignored scratch from old driver runs — excluded
+if grep -rnE '\bPACK_COMPOSE\b|\bPACK_PAYLOAD\b|\bPACK_SHIP_ONLY\b|agent-packs\.tar\.gz|opencode-agents\.tar\.gz|SHA256SUMS' \
+   --include='*.md' README.md AGENTS.md packs/ | grep -v '/\.plan/'; then
+  echo "FAIL: stale references to agent-packs.tar.gz / PACK_COMPOSE / PACK_PAYLOAD / PACK_SHIP_ONLY / legacy assets in docs" >&2
+  exit 1
+fi
+echo "ok: no stale release-flow references in README/AGENTS/pack docs"
 
 echo "== release-mode installer E2E (offline, file:// fake release base) =="
 e2e="$smoke_tmp/release-e2e"

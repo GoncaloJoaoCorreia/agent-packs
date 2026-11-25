@@ -46,6 +46,6 @@ the source of truth.
 ## For maintainers
 
 Add a skill as `skills/<name>/SKILL.md` (Agent Skills format, one directory per
-skill). CI validates every skill on each PR; the Release workflow publishes them to
-the cloud registry. See [docs/local-and-cloud.md](docs/local-and-cloud.md) for how
+skill). CI validates every skill on each PR; every release of this pack publishes them
+to the cloud registry. See [docs/local-and-cloud.md](docs/local-and-cloud.md) for how
 the local and cloud installs work under the hood.
