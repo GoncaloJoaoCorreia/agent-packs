@@ -1,21 +1,22 @@
 ---
 name: init-agents-md
-description: Initialize or update a repository's AGENTS.md — preloaded with your standing conventions (no inline comments ever, conventional commits without PR number, clarify-before-assuming, approval-first boundaries); inspects the repo, then writes a concise AGENTS.md at the repo root. Use when the user wants to set up, create, or refresh AGENTS.md in a project.
+description: Initialize or update a repository's AGENTS.md — preloaded with your standing conventions (no inline comments ever, conventional commits without PR number, clarify-before-assuming, approval-first boundaries); inspects the repo, shows a draft for your approval, then writes AGENTS.md at the repo root. Use when the user wants to set up, create, or refresh AGENTS.md in a project.
 license: Unlicense
-compatibility: Requires a git repository; run from the repo root. Interactive (asks before overwriting / adjusting preferences).
+compatibility: Requires a git repository; run from the repo root. Interactive: shows a draft for approval and asks only when something is unclear.
 user-invocable: true
 ---
 
 # Init AGENTS.md
 
 Create or refresh the root `AGENTS.md` of the current repository. Your standing
-conventions are **preloaded below** — write them into the file verbatim unless you
-adjust them for this repo; never re-ask each rule one by one.
+conventions are **preloaded below** — write them into the file verbatim. If you want
+them changed, say so in the invocation prompt (e.g. `/init-agents-md drop the
+commits rule`); do not ask about them.
 
 ## Preloaded conventions
 
-Write this block (adjusted only if the user says so) as the `## Conventions`
-section of the AGENTS.md:
+Write this block verbatim as the `## Conventions` section of the AGENTS.md, applying
+only changes explicitly stated in the user's invocation prompt:
 
 ```md
 ## Conventions
@@ -54,24 +55,29 @@ section of the AGENTS.md:
    primary language(s), package manager + lockfile, test runner and commands,
    linter/formatter, CI workflows, existing `CONTRIBUTING.md` / README conventions,
    and the commit style from `git log`.
-3. **Ask one question**: "Use the preloaded conventions as-is for this
-   repo, or adjust them?" Apply the answer; if they adjust, change only what they
-   mention.
-4. **Write `AGENTS.md`** at the repo root — concise, factual, imperative. Sections:
-   **Repo** (stack + build/test/lint commands from step 2) and **Conventions**
-   (the preloaded block). Keep it under ~100 lines; link to
-   `CONTRIBUTING.md` or other docs instead of inlining them.
-5. **Verify**: re-read the written file, confirm the preloaded block is intact
-   (unless adjusted), and summarize what was written and where.
+3. **Draft**: assemble the full AGENTS.md draft — a `## Repo` section from the step-2
+   facts (stack + build/test/lint commands) plus the preloaded `## Conventions` block
+   verbatim (with any changes stated in the invocation prompt). Keep it under ~100
+   lines; link to `CONTRIBUTING.md` or other docs instead of inlining them.
+4. **Show the draft and wait for approval.** Present the complete draft content in
+   the chat and ask the user to approve or request changes. Do NOT write any file
+   before explicit approval; if they request changes, revise the draft and show it
+   again.
+5. **Write** `AGENTS.md` at the repo root only after approval, then re-read the
+   written file, confirm the Conventions block is intact (unless changed via the
+   prompt), and summarize what was written and where.
 
 ## Rules
 
+- Ask questions only when something is unclear in the repo structure or in the
+  user's prompt (e.g. an existing AGENTS.md, an ambiguous request). Never ask
+  "should I change the conventions?" — the preloaded block goes in verbatim unless
+  the invocation prompt says otherwise.
 - The preloaded block above is the only source for these conventions — never
   invent or "improve" them, and do not add a communication-style or test/lint
   verification policy (the user deliberately omits those).
+- Always show a draft for approval before writing AGENTS.md.
 - AGENTS.md is instructions for agents, not a README: no marketing, no history.
 - When writing any file (including AGENTS.md itself), follow the Comments
   convention above: no inline comments, ever — Javadoc-style only for interface
   contract declarations, if needed.
-- Ask before overwriting an existing `AGENTS.md`; reference existing convention
-  docs instead of duplicating them.
