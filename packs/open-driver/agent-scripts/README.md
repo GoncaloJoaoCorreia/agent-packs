@@ -1,9 +1,9 @@
 # agent-scripts
 
 Unit-tested automation scripts for the routine "by hand" driver tasks, usable on
-any system with minimal prerequisites. Payload of the **opencode** pack: the repo-root
+any system with minimal prerequisites. Payload of the **open-driver** pack: the repo-root
 `install.sh` copies this directory into the config dir at install time
-(`<config>/agent-scripts/`, see `packs/opencode/install.sh` `PACK_PAYLOAD_DIRS`), and
+(`<config>/agent-scripts/`, see `packs/open-driver/install.sh` `PACK_PAYLOAD_DIRS`), and
 it ships in the release payload. Installed to:
 
 ```
@@ -243,7 +243,7 @@ JSON escaping byte-identical.
 ## Tests
 
 ```
-sh packs/opencode/agent-scripts/tests/run-tests.sh
+sh packs/open-driver/agent-scripts/tests/run-tests.sh
 ```
 
 Runs `tests/test-detect-forge.sh` (scratch git repos in `mktemp -d` + stub CLI

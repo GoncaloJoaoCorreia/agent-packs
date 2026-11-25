@@ -1,7 +1,7 @@
 #!/bin/sh
-# Pre-release validation for the opencode pack (packs/opencode).
+# Pre-release validation for the open-driver pack (packs/open-driver).
 # Used by the root scripts/validate.sh dispatcher (which .github/workflows call);
-# also runnable directly: sh packs/opencode/scripts/validate.sh
+# also runnable directly: sh packs/open-driver/scripts/validate.sh
 # Requires: sh, ruby (with psych/yaml + json stdlib), python3 (agent-scripts/ is a
 # shipped payload — CI on ubuntu-latest has it preinstalled). shellcheck is optional
 # (skipped if absent).
@@ -31,13 +31,13 @@ trap 'rm -rf "$install_tmp" agents/.agent skills/driver-conventions/.agent' EXIT
 mkdir -p agents/.agent skills/driver-conventions/.agent
 echo "# synthetic driver history" > agents/.agent/history.md
 echo "# synthetic decisions" > skills/driver-conventions/.agent/decisions.md
-sh "$REPO/install.sh" --source --dest "$install_tmp/cfg" opencode >/dev/null
+sh "$REPO/install.sh" --source --dest "$install_tmp/cfg" open-driver >/dev/null
 if find "$install_tmp/cfg" -type d \( -name .agent -o -name __pycache__ \) | grep -q .; then
   echo "FAIL: .agent/ or __pycache__/ installed into $install_tmp/cfg:" >&2
   find "$install_tmp/cfg" -type d \( -name .agent -o -name __pycache__ \) >&2
   exit 1
 fi
-manifest="$install_tmp/cfg/agent-packs.opencode.manifest"
+manifest="$install_tmp/cfg/agent-packs.open-driver.manifest"
 if grep -Eq '(^|/)(\.agent|__pycache__)/' "$manifest"; then
   echo "FAIL: manifest lists .agent/ or __pycache__ entries:" >&2
   grep -E '(^|/)(\.agent|__pycache__)/' "$manifest" >&2
@@ -48,18 +48,18 @@ echo "ok: no .agent/ or __pycache__/ in installed payload or manifest"
 echo "== installer installs the full payload (incl. agent-scripts/ + skills/) =="
 for f in agents/driver.md plugins/driver-viz/tui.tsx \
          skills/driver-conventions/SKILL.md agent-scripts/driver-state.py \
-         agent-packs.opencode.manifest agent-packs.opencode.version; do
+         agent-packs.open-driver.manifest agent-packs.open-driver.version; do
   [ -e "$install_tmp/cfg/$f" ] || { echo "FAIL: installed cfg is missing $f" >&2; exit 1; }
 done
 [ -e "$install_tmp/cfg/snippets/gitignore.txt" ] && { echo "FAIL: snippets/ must be ship-only, not installed" >&2; exit 1; }
 echo "ok: payload installed (incl. agent-scripts/ + skills/), snippets/ not installed"
 
 echo "== --list shows the pack =="
-if ! sh "$REPO/install.sh" --source --list | grep -q 'opencode'; then
-  echo "FAIL: install.sh --list does not list the opencode pack" >&2
+if ! sh "$REPO/install.sh" --source --list | grep -q 'open-driver'; then
+  echo "FAIL: install.sh --list does not list the open-driver pack" >&2
   exit 1
 fi
-echo "ok: --list lists opencode"
+echo "ok: --list lists open-driver"
 
 echo "== asset convention files =="
 for f in "$REPO/install.sh" "$REPO/scripts/install-lib.sh" pack.conf install.sh \

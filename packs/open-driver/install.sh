@@ -1,9 +1,9 @@
 #!/bin/sh
-# packs/opencode/install.sh — pack-owned installer for the opencode pack.
+# packs/open-driver/install.sh — pack-owned installer for the open-driver pack.
 #
 # Invoked by the root install.sh (orchestrator) as:
-#   AGENT_PACKS_ROOT=<payload root> sh packs/opencode/install.sh check
-#   AGENT_PACKS_ROOT=<payload root> sh packs/opencode/install.sh install <dest> <version> [--no-plugin]
+#   AGENT_PACKS_ROOT=<payload root> sh packs/open-driver/install.sh check
+#   AGENT_PACKS_ROOT=<payload root> sh packs/open-driver/install.sh install <dest> <version> [--no-plugin]
 #
 # Shared mechanics come from install-lib.sh, found via $AGENT_PACKS_INSTALL_LIB, else the
 # copy vendored next to this script inside a release tarball ($AGENT_PACKS_ROOT/install-lib.sh),
@@ -47,7 +47,7 @@ pack_extra_checks() {
   user_cfg="${XDG_CONFIG_HOME:-$HOME/.config}/opencode"
   if ! grep -qs 'linear-project\|mcp\.linear\.app' "$user_cfg/opencode.json" "$user_cfg/opencode.jsonc" 2>/dev/null; then
     echo "install: warning: no Linear MCP server (linear-project) in your user-level OpenCode config ($user_cfg/opencode.json / opencode.jsonc)" >&2
-    echo "  the driver needs it to read Linear issues — add it to your user-level or repo-level opencode config:" >&2
+    echo "  the driver needs it to read Linear issues — add it to your user-level or repo-level open-driver config:" >&2
     echo '  { "mcp": { "linear-project": { "type": "remote", "url": "https://mcp.linear.app/mcp", "enabled": true } } }' >&2
   fi
 }

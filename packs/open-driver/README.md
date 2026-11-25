@@ -1,11 +1,11 @@
-# opencode pack
+# open-driver pack
 
 [![test](https://github.com/GoncaloJoaoCorreia/agent-packs/actions/workflows/test.yml/badge.svg)](https://github.com/GoncaloJoaoCorreia/agent-packs/actions/workflows/test.yml)
 [![build](https://github.com/GoncaloJoaoCorreia/agent-packs/actions/workflows/release.yml/badge.svg)](https://github.com/GoncaloJoaoCorreia/agent-packs/actions/workflows/release.yml)
 [![release](https://img.shields.io/github/release/GoncaloJoaoCorreia/agent-packs?display_name=tag)](https://github.com/GoncaloJoaoCorreia/agent-packs/releases/latest)
 [![license](https://img.shields.io/badge/license-Unlicense-blue)](LICENSE)
 
-The **opencode** pack of [agent-packs](../../README.md) — a library of
+The **open-driver** pack of [agent-packs](../../README.md) — a library of
 [OpenCode v2](https://opencode.ai/v2/docs/) agents, commands, skills — and one TUI plugin.
 Installed by the repo-root `install.sh` (see [`packs/README.md`](../README.md)).
 
@@ -40,7 +40,7 @@ curl -fsSL https://raw.githubusercontent.com/GoncaloJoaoCorreia/agent-packs/main
 The installer fetches the latest release's `manifest.json`, lists the available packs with
 their versions in a checkbox TUI (or `--plain` numbered prompt), and asks which to install
 (multiple selectable; pass pack names / `all` explicitly to skip the prompt — see `--list`;
-no TTY + no args exits with an error). It downloads this pack's `packs/opencode.tar.gz`,
+no TTY + no args exits with an error). It downloads this pack's `packs/open-driver.tar.gz`,
 verifies its sha256 against the manifest, and installs this pack's payload —
 `agents/`, `commands/`, `plugins/`, `agent-scripts/`, `skills/` —
 into `~/.config/opencode/` (or `$XDG_CONFIG_HOME/opencode`). OpenCode reloads config
@@ -55,8 +55,8 @@ Re-run it after pulling changes.
 <details>
 <summary><b>Install details</b></summary>
 
-- **Latest release only.** Each install stamps `agent-packs.opencode.version` and writes
-  `agent-packs.opencode.manifest` into the config dir; the manifest lets reinstalls remove
+- **Latest release only.** Each install stamps `agent-packs.open-driver.version` and writes
+  `agent-packs.open-driver.manifest` into the config dir; the manifest lets reinstalls remove
   files that were deleted upstream (and cleans up the legacy pre-rename
   `opencode-agents.manifest` once). Installs only ever touch `agents/`, `commands/`,
   `skills/`, `agent-scripts/`, `plugins/` (unless `--no-plugin`) and those two meta files.

@@ -1,6 +1,6 @@
-# AGENTS.md — opencode pack
+# AGENTS.md — open-driver pack
 
-The **opencode** pack of [agent-packs](../../README.md) — a library of OpenCode v2
+The **open-driver** pack of [agent-packs](../../README.md) — a library of OpenCode v2
 agents/commands/skills plus one TUI plugin. Ships the
 **driver** (`/driver`) — a multi-phase feature-cycle orchestrator — and **driver-viz**, a
 TUI-only plugin that renders the live phase flow chart of the current driver run in the
@@ -27,14 +27,14 @@ plugin, both including the agent-scripts unit suite).
   forge CLI `gh`/`glab`/`forgejo-cli`, `shellcheck`) only produce a warning when absent.
 - **Release assets convention:** each GitHub release carries a `manifest.json` (per-pack
   `version`/`description`/`asset`/`sha256`) plus one `packs/<name>.tar.gz` per pack; this
-  pack ships as `packs/opencode.tar.gz` (top-level `opencode/` with `pack.conf` +
+  pack ships as `packs/open-driver.tar.gz` (top-level `open-driver/` with `pack.conf` +
   `install.sh` + vendored `install-lib.sh` + payload dirs, minus repo-only `scripts/`,
   `docs/`, `README.md`, `AGENTS.md`). The installer fetches the manifest unauthenticated
   from `releases/latest/download/` (the repo is public). **Releases are cut automatically
   on pushes to `main` by the release workflow (see Releases below)** — don't hand-upload
   assets.
-- Each install of this pack writes `agent-packs.opencode.version` +
-  `agent-packs.opencode.manifest` into the config dir (`PACK_META_PREFIX` in `pack.conf`);
+- Each install of this pack writes `agent-packs.open-driver.version` +
+  `agent-packs.open-driver.manifest` into the config dir (`PACK_META_PREFIX` in `pack.conf`);
   the manifest drives stale-file cleanup on reinstall, and the legacy pre-rename
   `opencode-agents.manifest` / `opencode-agents.version` are cleaned up once
   (`PACK_LEGACY_MANIFEST` / `PACK_LEGACY_CLEANUP`). Installs only touch the pack's
@@ -48,7 +48,7 @@ plugin, both including the agent-scripts unit suite).
   `scripts/validate.sh` regression-tests the exclusion by planting a synthetic `.agent/`
   fixture (in `agents/` and in `skills/driver-conventions/`), running `install.sh --source`
   into a temp dir, and asserting it is not installed; the release workflow's self-test
-  greps the downloaded `packs/opencode.tar.gz` for repo-only paths. Re-running the installer
+  greps the downloaded `packs/open-driver.tar.gz` for repo-only paths. Re-running the installer
   also cleans previously installed copies via the manifest stale-file loop.
 - Install is **copy-based on purpose** (`cp -RL`): do NOT symlink these dirs into
   `~/.config/opencode/` or `.opencode/` — OpenCode's discovery skips symlinked agent files
@@ -95,7 +95,7 @@ install.sh                  # pack-owned installer for this pack (called by the 
 
 The repo-root `install.sh` is the orchestrator (TUI/--plain pack picker, `PACK[@version]`
 args, source vs manifest-release mode, per-pack OK/FAILED summary); this pack's install
-logic lives in `packs/opencode/install.sh`.
+logic lives in `packs/open-driver/install.sh`.
 
 ## driver-viz plugin
 
@@ -168,7 +168,7 @@ payload), so the payload and the installed config dir never get its `node_module
 status rendering in `FlowChart.tsx` / `tui.tsx`):
 
 ```
-cd packs/opencode/scripts/driver-viz-render-test
+cd packs/open-driver/scripts/driver-viz-render-test
 UPDATE_SNAPSHOTS=1 bun run test    # writes snapshots/*.snap
 ```
 
@@ -185,7 +185,7 @@ the OpenCode binary.
   this pack is re-released when its payload changes (or on any infra change). The pack's
   own `scripts/release.sh` (thin wrapper over `ap_release_pack` in
   `scripts/release-lib.sh`) computes this pack's version from conventional commits since
-  the last tag and builds `packs/opencode.tar.gz` + its manifest entry.
+  the last tag and builds `packs/open-driver.tar.gz` + its manifest entry.
 - `workflow_dispatch` remains for manual re-runs with an optional `version` input
   (release-cursor tag only; per-pack versions live in `manifest.json`).
 - The pipeline: root `./scripts/validate.sh` → `scripts/release-detect.sh` → per changed
@@ -221,8 +221,8 @@ update the schemas too**, and keep README.md's summary in sync.
   repo-locally in `git config driver.forge` (never committed).
 - **New agent-script**: add it under `agent-scripts/` with unit tests in
   `agent-scripts/tests/` (wired into `run-tests.sh`), and mirror it in the root
-  `scripts/validate.sh` + `packs/opencode/scripts/validate.sh` (asset list + syntax/tests
-  sections), `.github/workflows/release.yml` (the self-test asserts the opencode tarball
+  `scripts/validate.sh` + `packs/open-driver/scripts/validate.sh` (asset list + syntax/tests
+  sections), `.github/workflows/release.yml` (the self-test asserts the open-driver tarball
   ships `agent-scripts/` and the release-mode install lands it), plus README/AGENTS.md
   and an invocation/exit-code entry in
   `skills/driver-conventions/SKILL.md` §8. The `agent-scripts` entry in this pack's

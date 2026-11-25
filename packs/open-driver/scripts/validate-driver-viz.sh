@@ -3,13 +3,13 @@
 # Kept separate from this pack's scripts/validate.sh, which covers the
 # agent/command/skill declarations. Run via the root scripts/validate.sh dispatcher
 # (used by .github/workflows); also runnable directly:
-#   sh packs/opencode/scripts/validate-driver-viz.sh
+#   sh packs/open-driver/scripts/validate-driver-viz.sh
 # Requires: sh, ruby (with psych/yaml + json stdlib), node >= 22.18 (TS logic tests).
 # Optional: bun (render snapshot tests in scripts/driver-viz-render-test/ — CI
 # installs it via setup-bun in test.yml; without bun that section skips).
 # (shellcheck itself is optional — skipped if absent)
 set -eu
-cd "$(dirname "$0")/.."   # -> packs/opencode
+cd "$(dirname "$0")/.."   # -> packs/open-driver
 
 if command -v shellcheck >/dev/null 2>&1; then
   shellcheck scripts/validate-driver-viz.sh

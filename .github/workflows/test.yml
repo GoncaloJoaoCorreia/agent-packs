@@ -2,8 +2,8 @@ name: test
 
 # Runs on every PR to main (and on pushes to main):
 #   the full repo-wide validation ./scripts/validate.sh — root install.sh syntax,
-#   pack.conf sanity, the opencode pack's agent-scripts unit suite, and every pack's own
-#   scripts/validate.sh (the opencode pack's covers agent/command/skill declarations
+#   pack.conf sanity, the open-driver pack's agent-scripts unit suite, and every pack's own
+#   scripts/validate.sh (the open-driver pack's covers agent/command/skill declarations
 #   + validate-driver-viz.sh incl. the agent-scripts unit suite).
 # Same commands as the manual release workflow (release.yml); setup mirrors it
 # (ubuntu-latest has python3 + git preinstalled; node 22 + bun + ruby + shellcheck).

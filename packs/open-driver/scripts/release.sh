@@ -1,8 +1,8 @@
 #!/bin/sh
-# packs/opencode/scripts/release.sh — pack-owned release builder for the opencode pack.
+# packs/open-driver/scripts/release.sh — pack-owned release builder for the open-driver pack.
 # Run by .github/workflows/release.yml (G-113 M2) as:
-#   REPO_ROOT=<checkout> OUT_DIR=<artifacts dir> sh packs/opencode/scripts/release.sh
-# Builds $OUT_DIR/packs/opencode.tar.gz (payload + pack.conf + install.sh + vendored
+#   REPO_ROOT=<checkout> OUT_DIR=<artifacts dir> sh packs/open-driver/scripts/release.sh
+# Builds $OUT_DIR/packs/open-driver.tar.gz (payload + pack.conf + install.sh + vendored
 # install-lib.sh) and $OUT_DIR/opencode.meta.json {version, description, asset, sha256}.
 # Shared mechanics: scripts/release-lib.sh (ap_release_pack).
 set -eu

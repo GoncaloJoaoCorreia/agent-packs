@@ -2,7 +2,7 @@
 """Regenerate the README screenshot — a mock terminal-window capture of the driver-viz
 sidebar section, matching what the TUI actually renders (see plugins/driver-viz/lib/FlowChart.tsx).
 
-    python3 packs/opencode/scripts/screenshot-driver-viz.py
+    python3 packs/open-driver/scripts/screenshot-driver-viz.py
 
 Lives in the pack's repo-only scripts/ on purpose: the release payload ships only the
 pack payload dirs (plugins/ etc.), and release.yml strips scripts/ from the tarball, so

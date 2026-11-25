@@ -2,7 +2,7 @@
 
 Personal library of agent-harness extensions (**packs**): one self-contained pack per
 harness under `packs/<name>/`.
-Currently ships three packs: **opencode** (`packs/opencode/`) — the **driver**
+Currently ships three packs: **open-driver** (`packs/open-driver/`) — the **driver**
 (`/driver`, a multi-phase feature-cycle orchestrator) and the **driver-viz** TUI plugin —
 **vibe-acp** (`packs/vibe-acp/`) — Mistral Vibe (`vibe-acp` over ACP) as an OpenCode
 `vibe/<model>` provider, no OpenCode fork — and **vibe-skills** (`packs/vibe-skills/`) —
@@ -19,7 +19,7 @@ Tests + validation run in CI on every PR (`.github/workflows/test.yml`).
 install.sh                      # installer ORCHESTRATOR (mode detection, pack picker, dispatch)
 packs/
   README.md                     # the pack contract (pack.conf metadata keys, pack-owned install.sh)
-  opencode/
+  open-driver/
     pack.conf                   # pack metadata sourced by install.sh + the pack's install.sh
     install.sh                  # pack-owned installer (payload dirs, hooks, cleanup)
     agents/  commands/  plugins/  agent-scripts/  skills/  snippets/   # payload (installed into
@@ -38,7 +38,7 @@ scripts/
   assemble-manifest.py          # assembles a release's manifest.json
   validate.sh                   # repo-wide dispatcher: installer + release script syntax, pack contract,
                                 #   smoke installs, release-lib unit tests, offline release-mode E2E,
-                                #   the opencode pack's agent-scripts tests, every packs/*/scripts/validate*.sh
+                                #   the open-driver pack's agent-scripts tests, every packs/*/scripts/validate*.sh
 .github/workflows/
   test.yml                      # PR/push validation
   release.yml                   # manifest release pipeline — runs on pushes to main (see Releases)
@@ -59,8 +59,8 @@ scripts/
   without a TTY and without pack args it **exits 2** (never picks a default silently).
   OpenCode reloads config automatically, no restart. **Re-run `./install.sh` after every
   edit here.**
-- **Prerequisite check:** per pack, `PACK_PREREQS` tools must execute (the opencode pack
-  requires `python3` and `git` — the shipped `packs/opencode/agent-scripts/` need both); the
+- **Prerequisite check:** per pack, `PACK_PREREQS` tools must execute (the open-driver pack
+  requires `python3` and `git` — the shipped `packs/open-driver/agent-scripts/` need both); the
   installer hard-fails with a clear message before touching any config dir. Optional
   tools (a forge CLI `gh`/`glab`/`forgejo-cli`, `shellcheck`) only produce a warning.
 - **Release assets convention:** each GitHub release carries `manifest.json`
@@ -78,13 +78,14 @@ scripts/
 - Each pack install writes `<PACK_META_PREFIX>.version` + `<PACK_META_PREFIX>.manifest`
   into the pack's config dir; the manifest drives stale-file cleanup on reinstall
   (files listed there under the pack's managed dirs that no longer exist upstream are
-  removed). The opencode pack also cleans up the legacy pre-rename
-  `opencode-agents.manifest` / `opencode-agents.version` once.
+  removed). The open-driver pack also cleans up legacy meta files once: the pre-rename
+  repo's `opencode-agents.manifest` / `opencode-agents.version` and the old pack name's
+  `agent-packs.opencode.manifest` / `agent-packs.opencode.version`.
 - Installs are **copy-based on purpose** (`cp -RL`): do NOT symlink pack payload dirs into
   a config dir — OpenCode's discovery skips symlinked agent files (e.g. the
-  `packs/opencode/agents/driver/plan-thorough.md` symlink placeholder won't register).
+  `packs/open-driver/agents/driver/plan-thorough.md` symlink placeholder won't register).
 - Sanity check after changes: `sh scripts/validate.sh` must pass, and a throwaway
-  `XDG_CONFIG_HOME=$(mktemp -d) ./install.sh --source opencode` must produce a config dir
+  `XDG_CONFIG_HOME=$(mktemp -d) ./install.sh --source open-driver` must produce a config dir
   with `agents/`, `commands/`, `plugins/`, `agent-scripts/`, and
   `skills/driver-conventions/`.
 
@@ -113,13 +114,13 @@ scripts/
   redirects git/raw URLs of the old name. Note: new releases no longer carry the legacy
   pre-rename tarball asset (G-113 decision — no backwards compat with pre-rename
   one-liners), so pre-rename installers only keep working against old releases; the
-  opencode pack's local legacy-manifest cleanup stays.
+  open-driver pack's local legacy-manifest cleanup stays.
 
 ## Contracts — one source of truth
 
 All driver file formats (`.plan/<slug>/state.json`, `manifest.json`, commit messages,
-slug/branch/worktree policy) are defined in `packs/opencode/skills/driver-conventions/SKILL.md`
-with JSON schemas in `packs/opencode/skills/driver-conventions/references/`. The opencode
+slug/branch/worktree policy) are defined in `packs/open-driver/skills/driver-conventions/SKILL.md`
+with JSON schemas in `packs/open-driver/skills/driver-conventions/references/`. The open-driver
 pack ships that directory as payload, installed at `<config>/skills/driver-conventions/`.
 **If you change a format, update the schemas too**, and keep the pack READMEs in sync.
 
@@ -137,21 +138,21 @@ pack ships that directory as payload, installed at `<config>/skills/driver-conve
   lives under `packs/<name>/` (there is no `shared/` dir). Nothing else to wire: `--list`,
   the TUI picker, the release pipeline and validation all discover packs from
   `packs/*/pack.conf`.
-- **New phase** (opencode pack): add `packs/opencode/agents/driver/<phase>.md`,
-  `packs/opencode/commands/phases/<phase>.md`, and a row in the phase registry in
-  `packs/opencode/agents/driver.md` (section 6) — plus the mirrored row in
-  `packs/opencode/plugins/driver-viz/lib/phases.ts` (`validate-driver-viz.sh` fails otherwise).
+- **New phase** (open-driver pack): add `packs/open-driver/agents/driver/<phase>.md`,
+  `packs/open-driver/commands/phases/<phase>.md`, and a row in the phase registry in
+  `packs/open-driver/agents/driver.md` (section 6) — plus the mirrored row in
+  `packs/open-driver/plugins/driver-viz/lib/phases.ts` (`validate-driver-viz.sh` fails otherwise).
 - **New variant of a phase**: row in the VARIANTS table in `agents/driver.md`; replace the
   `plan-thorough.md` symlink with a real agent file (same output contract) when needed.
 - **New `/driver` flag**: parse it in section 1 of `agents/driver.md`, store in `state.params`.
-- **New agent-script**: add it under `packs/opencode/agent-scripts/` with unit tests in
-  `packs/opencode/agent-scripts/tests/` (wired into `run-tests.sh`), and mirror it in
-  `packs/opencode/install.sh` (`PACK_PAYLOAD_DIRS` already covers the install side), the
-  opencode pack validator (asset list + syntax/tests section),
-  `.github/workflows/release.yml` (self-test: the opencode tarball ships `agent-scripts/`
+- **New agent-script**: add it under `packs/open-driver/agent-scripts/` with unit tests in
+  `packs/open-driver/agent-scripts/tests/` (wired into `run-tests.sh`), and mirror it in
+  `packs/open-driver/install.sh` (`PACK_PAYLOAD_DIRS` already covers the install side), the
+  open-driver pack validator (asset list + syntax/tests section),
+  `.github/workflows/release.yml` (self-test: the open-driver tarball ships `agent-scripts/`
   and the release-mode install asserts the script lands in the temp config),
   plus the pack README/AGENTS.md and an invocation/exit-code entry in
-  `packs/opencode/skills/driver-conventions/SKILL.md` §8.
+  `packs/open-driver/skills/driver-conventions/SKILL.md` §8.
 
 ## Gotchas (hard-earned — do not rediscover)
 
@@ -172,11 +173,11 @@ pack ships that directory as payload, installed at `<config>/skills/driver-conve
   via `/models`).
 - `.plan/` is scratch and gitignored in target repos — the driver writes nothing else into them.
 - Don't re-implement routine, scriptable logic inside agent prompts (inline shell/python
-  in `packs/opencode/agents/*.md`). If a phase needs mechanical, repeated work — git/forge
+  in `packs/open-driver/agents/*.md`). If a phase needs mechanical, repeated work — git/forge
   probing, JSON merges of `state.json`, looping over files, parsing command output — put it
-  in a shipped, unit-tested `packs/opencode/agent-scripts/` script and call that from the
+  in a shipped, unit-tested `packs/open-driver/agent-scripts/` script and call that from the
   prompt instead. Precedent: `detect-forge.sh` + `driver-state.py` (G-20 / PR #1); the
-  mechanism and the mandate live in `packs/opencode/skills/driver-conventions/SKILL.md` §8.
+  mechanism and the mandate live in `packs/open-driver/skills/driver-conventions/SKILL.md` §8.
   Inline logic in a prompt is only for one-off, phase-specific steps.
 - The installer's TUI/prompt must read from `/dev/tty` (with `curl | sh`, stdin is the
   script); with no TTY and no pack args it exits 2 instead of guessing.
