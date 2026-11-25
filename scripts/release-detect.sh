@@ -55,6 +55,6 @@ if [ -z "$packs" ]; then
 else
   echo "release=1"
   # shellcheck disable=SC2086
-  echo "packs=$(printf '%s\n' $packs | LC_ALL=C sort -u | tr '\n' ' ')"
+  echo "packs=$(printf '%s\n' $packs | LC_ALL=C sort -u | paste -sd' ' -)"
   echo "infra=$infra"
 fi

@@ -84,12 +84,13 @@ jobs:
           echo "$out"
           release=$(printf '%s\n' "$out" | sed -n 's/^release=//p')
           packs=$(printf '%s\n' "$out" | sed -n 's/^packs=//p')
+          # shellcheck disable=SC2086  # re-split to trim leading/trailing whitespace
+          packs=$(printf '%s\n' $packs)
+          if [ "${release:-0}" = "1" ] && [ "$packs" = "all" ]; then
+            packs=$(for c in packs/*/pack.conf; do basename "$(dirname "$c")"; done | LC_ALL=C sort | paste -sd' ' -)
+          fi
           echo "release=${release:-0}" >> "$GITHUB_OUTPUT"
           echo "packs=${packs:-}" >> "$GITHUB_OUTPUT"
-          if [ "${release:-0}" = "1" ] && [ "$packs" = "all" ]; then
-            packs=$(for c in packs/*/pack.conf; do basename "$(dirname "$c")"; done | LC_ALL=C sort | tr '\n' ' ')
-            echo "packs=$packs" >> "$GITHUB_OUTPUT"
-          fi
           if [ "${release:-0}" = "1" ]; then
             echo "changed packs: $packs"
           else
@@ -119,7 +120,10 @@ jobs:
             exit 0
           fi
           base="https://github.com/${{ github.repository }}/releases/download/$prev_tag"
-          curl -fsSL "$base/manifest.json" -o artifacts/manifest.prev.json
+          if ! curl -fsSL "$base/manifest.json" -o artifacts/manifest.prev.json; then
+            echo "previous release $prev_tag has no manifest.json (pre-manifest release) — manifest lists only the changed packs"
+            exit 0
+          fi
           PREV_TAG="$prev_tag" python3 - artifacts/manifest.prev.json artifacts ${{ steps.detect.outputs.packs }} <<'PY'
           import json, os, sys, urllib.request
           prev_path, out_dir, changed = sys.argv[1], sys.argv[2], sys.argv[3].split()
