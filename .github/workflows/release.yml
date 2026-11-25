@@ -3,14 +3,17 @@ name: release
 # Manual-only release pipeline:
 #   1. validate the repo (./scripts/validate.sh — root dispatcher: install.sh syntax,
 #      pack.conf sanity, opencode pack agent-scripts tests, every pack's validators)
-#   2. compute the tag (auto patch-bump from latest v* tag, or the `version` input)
-#   3. tag + push main
-#   4. build agent-packs.tar.gz + agent-packs.tar.gz.sha256 (the installer's asset
+#   2. publish the vibe-skills pack's skills to the Mistral registry (beta /v2/skills
+#      API; needs the MISTRAL_API_KEY secret; skipped with a warning when unset or
+#      when publish_skills=false) — fail-fast: runs BEFORE the tag is pushed
+#   3. compute the tag (auto patch-bump from latest v* tag, or the `version` input)
+#   4. tag + push main
+#   5. build agent-packs.tar.gz + agent-packs.tar.gz.sha256 (the installer's asset
 #      convention: one top-level agent-packs/ dir with packs/ install.sh LICENSE),
 #      plus a legacy opencode-agents.tar.gz (old layout) + SHA256SUMS so
 #      pre-rename installers still served from the old raw URL keep working
-#   5. create the GitHub release with an auto changelog
-#   6. self-test: download the new release, verify checksums, diff against checkout,
+#   6. create the GitHub release with an auto changelog
+#   7. self-test: download the new release, verify checksums, diff against checkout,
 #      run install.sh --release into a temp dir, and run the PREVIOUS tag's
 #      install.sh against the legacy assets
 on:
@@ -20,6 +23,11 @@ on:
         description: "Release version as vX.Y.Z (or X.Y.Z). Empty = auto-increment patch from the latest tag."
         required: false
         type: string
+      publish_skills:
+        description: "Publish packs/vibe-skills skills to the Mistral cloud registry (needs the MISTRAL_API_KEY secret)."
+        required: false
+        type: boolean
+        default: true
 
 permissions:
   contents: write
@@ -53,6 +61,22 @@ jobs:
 
       - name: Validate repository
         run: ./scripts/validate.sh
+
+      - name: Publish vibe-skills to the cloud registry
+        if: ${{ inputs.publish_skills }}
+        env:
+          # passed via env, never interpolated into the command line
+          MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
+        run: |
+          set -eu
+          if [ -z "$MISTRAL_API_KEY" ]; then
+            echo "warning: MISTRAL_API_KEY secret is not set — skipping cloud publish of vibe-skills"
+            echo "set it (Settings > Secrets and variables > Actions) to publish skills on release"
+            exit 0
+          fi
+          # ubuntu-latest ships python3; the script is stdlib-only and finds existing
+          # registry skills by name via the API, so no state needs to be committed back
+          python3 packs/vibe-skills/scripts/publish-to-cloud.py --apply
 
       - name: Compute release version
         id: version
@@ -220,6 +244,17 @@ jobs:
           test -f "$t/cfg-vibe/agent-packs.vibe-acp.manifest"
           test ! -e "$t/cfg-vibe/snippets"
           sh install.sh --release --list | grep -q 'vibe-acp'
+          # the vibe-skills pack ships its skills/ payload (pack.conf + skills/; scripts/ + docs/ stripped)
+          diff -r --exclude=.agent --exclude=__pycache__ "$t/agent-packs/packs/vibe-skills/skills" packs/vibe-skills/skills
+          test -f "$t/agent-packs/packs/vibe-skills/pack.conf"
+          test ! -e "$t/agent-packs/packs/vibe-skills/scripts"
+          test ! -e "$t/agent-packs/packs/vibe-skills/docs"
+          # vibe-skills installs from the release payload into a throwaway Vibe home
+          sh install.sh --release --dest "$t/cfg-vibe-skills" vibe-skills >/dev/null
+          test -f "$t/cfg-vibe-skills/skills/init-agents-md/SKILL.md"
+          test -f "$t/cfg-vibe-skills/agent-packs.vibe-skills.manifest"
+          test ! -e "$t/cfg-vibe-skills/scripts"
+          sh install.sh --release --list | grep -q 'vibe-skills'
           diff -r --exclude=.agent --exclude=__pycache__ "$t/agent-packs/packs/opencode/agent-scripts" packs/opencode/agent-scripts
           diff -r --exclude=.agent --exclude=__pycache__ "$t/agent-packs/packs/opencode/skills/driver-conventions" packs/opencode/skills/driver-conventions
           # full installer path: download payload, verify checksum, install into temp dir

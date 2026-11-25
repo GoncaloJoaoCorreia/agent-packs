@@ -44,7 +44,7 @@ Optional hooks (functions defined in `pack.conf`, called by the installer):
 
 - `install.sh` (no args, on a TTY) lists the packs and asks which to install — multiple
   selectable. No TTY (CI, `curl | sh` piped): installs the default pack (`opencode` when
-  present). `install.sh opencode vibe ...` / `install.sh all` never prompt; `--list` just
+  present). `install.sh opencode vibe-skills ...` / `install.sh all` never prompt; `--list` just
   prints the packs. `--dest DIR` requires a single pack.
 - Installs are **copy-based** (`cp -RL`) — never symlink payload dirs into a config dir.
 - `.agent/` and `__pycache__/` are stripped from everything installed and never listed in

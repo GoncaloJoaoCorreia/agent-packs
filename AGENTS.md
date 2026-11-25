@@ -2,10 +2,13 @@
 
 Personal library of agent-harness extensions (**packs**): one self-contained pack per
 harness under `packs/<name>/`.
-Currently ships two packs: **opencode** (`packs/opencode/`) — the **driver**
-(`/driver`, a multi-phase feature-cycle orchestrator) and the **driver-viz** TUI plugin — and
+Currently ships three packs: **opencode** (`packs/opencode/`) — the **driver**
+(`/driver`, a multi-phase feature-cycle orchestrator) and the **driver-viz** TUI plugin —
 **vibe-acp** (`packs/vibe-acp/`) — Mistral Vibe (`vibe-acp` over ACP) as an OpenCode
-`vibe/<model>` provider, no OpenCode fork.
+`vibe/<model>` provider, no OpenCode fork — and **vibe-skills** (`packs/vibe-skills/`) —
+a repository of Mistral Vibe skills (Agent Skills `SKILL.md`) installed into
+`${VIBE_HOME:-~/.vibe}/skills/` and publishable to the cloud Vibe registry
+(see `packs/vibe-skills/docs/local-and-cloud.md`).
 There is no build or lint at the repo level; each pack may carry its own validation under
 `packs/<name>/scripts/` (the root `scripts/validate.sh` dispatcher runs all of them).
 Tests + validation run in CI on every PR (`.github/workflows/test.yml`).
@@ -24,6 +27,7 @@ packs/
     scripts/                    # repo-only dev tooling (validate.sh, validate-driver-viz.sh,
                                 #   driver-viz-render-test/, screenshot-driver-viz.py) — NOT shipped
     docs/  README.md  AGENTS.md # repo-only docs — NOT shipped
+  vibe-acp/  vibe-skills/       # same contract: pack.conf + payload dirs (+ repo-only scripts/ docs/)
 scripts/
   validate.sh                   # repo-wide dispatcher: install.sh syntax, pack.conf sanity,
                                 #   the opencode pack's agent-scripts tests, every packs/*/scripts/validate*.sh
