@@ -1,5 +1,4 @@
-// ACP (Agent Client Protocol v1) wire types — only the surface `vibe-acp` actually uses,
-// as recorded by the M1 spike (packs/vibe/docs/acp-spike/notes.md).
+// ACP (Agent Client Protocol v1) wire types — only the surface `vibe-acp` actually uses.
 // ACP is newline-delimited JSON-RPC 2.0 over stdio.
 
 export interface Implementation {

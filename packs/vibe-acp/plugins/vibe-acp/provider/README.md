@@ -17,7 +17,7 @@ it through the `aisdk:` package bridge:
 Core's dynamic-provider plugin finds the `create*` export (`createVibeAcpProvider`), calls it with
 the provider's `settings`, and expects an AI SDK provider back; each `languageModel(modelID)`
 drives the `vibe-acp` binary over the Agent Client Protocol (NDJSON JSON-RPC on stdio, protocol
-version 1 — see `packs/vibe/docs/acp-spike/notes.md` for the recorded wire surface).
+version 1 — see `src/protocol.ts` and `src/acp.ts` for the wire surface this package implements).
 
 ## Layout
 

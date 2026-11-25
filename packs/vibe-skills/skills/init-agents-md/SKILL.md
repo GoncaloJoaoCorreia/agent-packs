@@ -127,8 +127,9 @@ only changes explicitly stated in the user's invocation prompt:
    and the commit style from `git log`.
 3. **Draft**: assemble the full AGENTS.md draft — a `## Repo` section from the step-2
    facts (stack + build/test/lint commands) plus the preloaded `## Conventions` block
-   verbatim (with any changes stated in the invocation prompt). Keep it under ~100
-   lines; link to `CONTRIBUTING.md` or other docs instead of inlining them.
+   verbatim (with any changes stated in the invocation prompt). The preloaded block
+   alone is ~100 lines, so keep the `## Repo` section tight; link to
+   `CONTRIBUTING.md` or other docs instead of inlining them.
 4. **Show the draft and wait for approval.** Present the complete draft content in
    the chat and ask the user to approve or request changes. Do NOT write any file
    before explicit approval; if they request changes, revise the draft and show it
