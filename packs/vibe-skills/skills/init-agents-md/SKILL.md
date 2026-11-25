@@ -1,6 +1,6 @@
 ---
 name: init-agents-md
-description: Initialize or update a repository's AGENTS.md — preloaded with your standing conventions (no inline comments ever, conventional commits without PR number, clarify-before-assuming, approval-first boundaries); inspects the repo, shows a draft for your approval, then writes AGENTS.md at the repo root. Use when the user wants to set up, create, or refresh AGENTS.md in a project.
+description: Initialize or update a repository's AGENTS.md — preloaded with your standing conventions (no inline comments ever, conventional commits, SemVer 2.0.0, Keep a Changelog 1.1.0, clarify-before-assuming, approval-first boundaries); inspects the repo, shows a draft for your approval, then writes AGENTS.md at the repo root. Use when the user wants to set up, create, or refresh AGENTS.md in a project.
 license: Unlicense
 compatibility: Requires a git repository; run from the repo root. Interactive: shows a draft for approval and asks only when something is unclear.
 user-invocable: true
@@ -33,6 +33,19 @@ only changes explicitly stated in the user's invocation prompt:
 
 - Conventional commits — `type(scope): subject`, imperative mood, no PR number in
   the message.
+
+### Versioning
+
+- Follow Semantic Versioning 2.0.0 (https://semver.org/spec/v2.0.0.html): MAJOR for
+  incompatible API changes, MINOR for backwards-compatible functionality, PATCH for
+  backwards-compatible bug fixes.
+
+### Changelog
+
+- Follow Keep a Changelog 1.1.0 (https://keepachangelog.com/en/1.1.0/): maintain
+  `CHANGELOG.md` with an `[Unreleased]` section on top and released versions as
+  `## [X.Y.Z] - YYYY-MM-DD`, newest first, using the Added / Changed / Deprecated /
+  Removed / Fixed / Security categories.
 
 ### Working style
 
