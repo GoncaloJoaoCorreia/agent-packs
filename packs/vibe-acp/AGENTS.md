@@ -21,8 +21,9 @@ Linear G-83):
 - `./install.sh vibe-acp` (root) copies `plugins/` into
   `${XDG_CONFIG_HOME:-~/.config}/opencode` (copy-based; `--dest DIR` for a throwaway config,
   `--no-plugin` skips it). Meta files `agent-packs.vibe-acp.{version,manifest}` drive stale-file
-  cleanup on reinstall. `snippets/` is ship-only. Release payloads strip `scripts/`, `docs/`,
-  and this file automatically.
+  cleanup on reinstall. `snippets/` is ship-only. The release tarball
+  (`packs/vibe-acp.tar.gz`) strips `scripts/`, `docs/`, and this file automatically and
+  carries `install.sh` + a vendored `install-lib.sh`.
 - `sh scripts/validate.sh` (root) auto-runs `packs/vibe-acp/scripts/validate.sh`: pack.conf
   syntax, JSON validity, plugin/provider path references, the `create*` export, the provider
   unit tests, and throwaway-install checks (payload + meta files, stale cleanup, `--no-plugin`,
@@ -38,7 +39,8 @@ Linear G-83):
 ## Layout
 
 ```
-pack.conf                # pack manifest: PACK_PAYLOAD="plugins", PACK_SHIP_ONLY="snippets", prereq git
+pack.conf                # pack metadata (name, description, dest, meta prefix, prereqs); payload dirs live in install.sh
+install.sh               # pack-owned installer: PACK_PAYLOAD_DIRS="plugins" (+ hooks)
 plugins/vibe-acp/
   index.ts               # server plugin (provider transform + integration + hooks)
   provider/              # runtime package — src/{jsonrpc,protocol,client,sessions,renderer,

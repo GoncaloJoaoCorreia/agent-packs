@@ -31,8 +31,9 @@ lists and toggles them (toggling writes `disabled_skills`); `enabled_skills` /
 project skills win over user skills, and local files win over registry skills.
 
 **This pack installs into the user-level path**: `pack.conf` sets
-`PACK_DEFAULT_DEST=${VIBE_HOME:-$HOME/.vibe}` and `PACK_PAYLOAD="skills"`, so
-`install.sh vibe-skills` copies `packs/vibe-skills/skills/` → `~/.vibe/skills/`
+`PACK_DEFAULT_DEST=${VIBE_HOME:-$HOME/.vibe}` and `install.sh` declares
+`PACK_PAYLOAD_DIRS="skills"`, so `install.sh vibe-skills` copies
+`packs/vibe-skills/skills/` → `~/.vibe/skills/`
 (copy-based, per repo convention — never symlink; re-run the installer after
 pulling changes, then `/reload` in Vibe). Alternative without the installer:
 `skill_paths = ["/abs/path/to/agent-packs/packs/vibe-skills/skills"]` in
@@ -70,11 +71,12 @@ the API (every published version carries the `agent-packs` alias), so the script
 from a fresh checkout; `scripts/cloud-manifest.json` is only a local name → id cache
 (repo-only, stripped from release payloads).
 
-It runs **automatically in the manual Release workflow**
-(`.github/workflows/release.yml`, step "Publish vibe-skills to the cloud registry",
-before the tag is pushed; disable with the `publish_skills=false` input). The workflow
-needs the `MISTRAL_API_KEY` repository secret — without it the step is skipped with a
-warning. To publish by hand instead:
+It runs **automatically on releases of this pack** — the release workflow
+(`.github/workflows/release.yml`) calls this pack's `scripts/release.sh` whenever
+`packs/vibe-skills/**` payload changes, and that script runs
+`publish-to-cloud.py --apply` (before the release tag is pushed). The workflow needs the
+`MISTRAL_API_KEY` repository secret — without it the publish is skipped with a warning.
+To publish by hand instead:
 
 ```sh
 MISTRAL_API_KEY=... python3 packs/vibe-skills/scripts/publish-to-cloud.py --apply
@@ -97,8 +99,8 @@ second editor.
    `scripts/validate.sh` in CI on every PR.
 2. **Local**: `./install.sh vibe-skills` (or `skill_paths` pointing at the checkout),
    then `/reload` in Vibe.
-3. **Cloud**: the Release workflow runs `publish-to-cloud.py --apply` on every release
-   (or run it by hand) → workspace-shared registry skills → **Publish to Vibe** in
+3. **Cloud**: every release of this pack runs `publish-to-cloud.py --apply` (or run it
+   by hand) → workspace-shared registry skills → **Publish to Vibe** in
    Studio → available in Vibe Work and cloud sessions.
    Optionally pin them back locally via the `/skills` Shared tab.
 

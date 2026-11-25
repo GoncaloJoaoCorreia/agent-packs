@@ -51,14 +51,17 @@ from its own `pack.conf`. Optional hooks it defines:
 
 ## Installer behavior
 
-- Root `install.sh` is a pure orchestrator: mode detection (`--source`/`--release`),
-  pack discovery from `packs/*/pack.conf`, the pack picker, and dispatch to each
-  `packs/<name>/install.sh`. It ends with a per-pack OK/FAILED summary and exits non-zero
-  if any pack failed.
-- `install.sh` (no args, on a TTY) lists the packs and asks which to install — multiple
-  selectable. No TTY (CI, `curl | sh` piped): installs the default pack (`opencode` when
-  present). `install.sh opencode vibe-skills ...` / `install.sh all` never prompt; `--list` just
-  prints the packs. `--dest DIR` requires a single pack.
+- Root `install.sh` is a pure orchestrator: mode detection (`--source`/`--release`), pack
+  discovery (from `packs/*/pack.conf` in source mode, from the release `manifest.json` in
+  release mode), the pack picker, and dispatch to each pack's own `install.sh` (the
+  vendored copy inside the pack tarball in release mode). It ends with a per-pack
+  OK/FAILED summary (name, resolved version, dest) and exits non-zero if any pack failed.
+- CLI: `install.sh [PACK[@VERSION] ...] [--source|--release] [--dest DIR] [--no-plugin]
+  [--plain] [--list]`. PACK args never prompt. No args + TTY → ANSI checkbox TUI over
+  `/dev/tty` (arrows navigate, space toggles, left/right cycles the pack's version across
+  the release manifest history, enter confirms, q aborts); `--plain` forces the numbered
+  multi-select prompt. No TTY + no args → exit 2 with a clear message (no silent default).
+  `--list` prints the packs with their versions. `--dest DIR` requires a single pack.
 - Installs are **copy-based** (`cp -RL`) — never symlink payload dirs into a config dir.
 - `.agent/` and `__pycache__/` are stripped from everything installed and never listed in
   the manifest.
@@ -72,10 +75,29 @@ Each GitHub release (tag `vX.Y.Z`, cut automatically on pushes to `main` that to
 `packs/**`, `install.sh`, `scripts/**` or `.github/workflows/**`; docs-only diffs release
 nothing) carries:
 
-- `manifest.json` — `{schema, release, packs: {<name>: {version, description, asset,
-  sha256}}}`. Per-pack versions are computed from conventional commits since the last
-  release tag (`feat`→minor, `fix`→patch, `!`/`BREAKING CHANGE:`→major, highest wins;
-  path-changed without prefix → patch), seeded from the latest `v*` tag.
+- `manifest.json` — schema (assembled by `scripts/assemble-manifest.py`):
+
+  ```json
+  {
+    "schema": 1,
+    "release": "vX.Y.Z",
+    "packs": {
+      "<name>": {
+        "asset": "packs/<name>.tar.gz",
+        "description": "<PACK_DESCRIPTION from pack.conf>",
+        "sha256": "<sha256 of the tarball>",
+        "version": "<per-pack version, e.g. v2.3.0>"
+      }
+    }
+  }
+  ```
+
+  Per-pack versions are computed from conventional commits since the last release tag
+  (`feat`→minor, `fix`→patch, `!`/`BREAKING CHANGE:`→major, highest wins;
+  path-changed without prefix → patch), seeded from the latest `v*` tag. The repo tag
+  `vX.Y.Z` is only a release cursor. The installer parses this fixed layout with awk
+  (indent=2, sorted keys, `ensure_ascii=False`) — keep `assemble-manifest.py` output in
+  exactly this shape.
 - `packs/<name>.tar.gz` per pack — top-level `<name>/` with the payload + `pack.conf` +
   `install.sh` + a vendored `install-lib.sh` (repo-only `scripts/`, `docs/`, pack-level
   `README.md`/`AGENTS.md`, plugin `test/` dirs, plus any `node_modules/`, `.agent/`,
