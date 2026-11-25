@@ -3,9 +3,6 @@
 [![test](https://github.com/GoncaloJoaoCorreia/agent-packs/actions/workflows/test.yml/badge.svg)](https://github.com/GoncaloJoaoCorreia/agent-packs/actions/workflows/test.yml)
 [![build](https://github.com/GoncaloJoaoCorreia/agent-packs/actions/workflows/release.yml/badge.svg)](https://github.com/GoncaloJoaoCorreia/agent-packs/actions/workflows/release.yml)
 [![release](https://img.shields.io/github/release/GoncaloJoaoCorreia/agent-packs?display_name=tag)](https://github.com/GoncaloJoaoCorreia/agent-packs/releases/latest)
-[![opencode](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fgithub.com%2FGoncaloJoaoCorreia%2Fagent-packs%2Freleases%2Flatest%2Fdownload%2Fmanifest.json&query=%24%5B%27packs%27%5D%5B%27opencode%27%5D%5B%27version%27%5D&label=opencode)](https://github.com/GoncaloJoaoCorreia/agent-packs/releases/latest)
-[![vibe-acp](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fgithub.com%2FGoncaloJoaoCorreia%2Fagent-packs%2Freleases%2Flatest%2Fdownload%2Fmanifest.json&query=%24%5B%27packs%27%5D%5B%27vibe-acp%27%5D%5B%27version%27%5D&label=vibe-acp)](https://github.com/GoncaloJoaoCorreia/agent-packs/releases/latest)
-[![vibe-skills](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fgithub.com%2FGoncaloJoaoCorreia%2Fagent-packs%2Freleases%2Flatest%2Fdownload%2Fmanifest.json&query=%24%5B%27packs%27%5D%5B%27vibe-skills%27%5D%5B%27version%27%5D&label=vibe-skills)](https://github.com/GoncaloJoaoCorreia/agent-packs/releases/latest)
 [![license](https://img.shields.io/badge/license-Unlicense-blue)](LICENSE)
 
 A personal library of agent-harness extensions — **packs**. Each pack under
@@ -14,11 +11,11 @@ A personal library of agent-harness extensions — **packs**. Each pack under
 
 ## Packs
 
-| Pack | Harness | What you get | Docs |
-|---|---|---|---|
-| [`opencode`](packs/opencode/) | [OpenCode v2](https://opencode.ai/v2/docs/) | The **driver** — `/driver` runs an entire feature cycle as coordinated subagents — plus **driver-viz**, a TUI sidebar plugin showing the live phase flow chart | [packs/opencode/README.md](packs/opencode/README.md) |
-| [`vibe-acp`](packs/vibe-acp/) | [OpenCode v2](https://opencode.ai/v2/docs/) | **Mistral Vibe as an OpenCode provider** — drives `vibe-acp` over ACP (no OpenCode fork): the `vibe/<model>` provider appears in `/models` automatically, `/connect` offers "Sign in with Vibe CLI" | [packs/vibe-acp/README.md](packs/vibe-acp/README.md) |
-| [`vibe-skills`](packs/vibe-skills/) | [Mistral Vibe CLI](https://github.com/mistralai/mistral-vibe) | A repo of Agent Skills (`SKILL.md`) installed as user-level skills in `${VIBE_HOME:-~/.vibe}/skills/` — the single source of truth, publishable to the cloud Vibe registry (Vibe Work / cloud sessions) | [packs/vibe-skills/README.md](packs/vibe-skills/README.md) |
+| Pack | Latest | Harness | What you get | Docs |
+|---|---|---|---|---|
+| [`opencode`](packs/opencode/) | [![opencode](https://img.shields.io/badge/dynamic/json?url=https://github.com/GoncaloJoaoCorreia/agent-packs/releases/latest/download/manifest.json&query=%24%5B%27packs%27%5D%5B%27opencode%27%5D%5B%27version%27%5D&label=opencode)](https://github.com/GoncaloJoaoCorreia/agent-packs/releases/latest) | [OpenCode v2](https://opencode.ai/v2/docs/) | The **driver** — `/driver` runs an entire feature cycle as coordinated subagents — plus **driver-viz**, a TUI sidebar plugin showing the live phase flow chart | [packs/opencode/README.md](packs/opencode/README.md) |
+| [`vibe-acp`](packs/vibe-acp/) | [![vibe-acp](https://img.shields.io/badge/dynamic/json?url=https://github.com/GoncaloJoaoCorreia/agent-packs/releases/latest/download/manifest.json&query=%24%5B%27packs%27%5D%5B%27vibe-acp%27%5D%5B%27version%27%5D&label=vibe-acp)](https://github.com/GoncaloJoaoCorreia/agent-packs/releases/latest) | [OpenCode v2](https://opencode.ai/v2/docs/) | **Mistral Vibe as an OpenCode provider** — drives `vibe-acp` over ACP (no OpenCode fork): the `vibe/<model>` provider appears in `/models` automatically, `/connect` offers "Sign in with Vibe CLI" | [packs/vibe-acp/README.md](packs/vibe-acp/README.md) |
+| [`vibe-skills`](packs/vibe-skills/) | [![vibe-skills](https://img.shields.io/badge/dynamic/json?url=https://github.com/GoncaloJoaoCorreia/agent-packs/releases/latest/download/manifest.json&query=%24%5B%27packs%27%5D%5B%27vibe-skills%27%5D%5B%27version%27%5D&label=vibe-skills)](https://github.com/GoncaloJoaoCorreia/agent-packs/releases/latest) | [Mistral Vibe CLI](https://github.com/mistralai/mistral-vibe) | A repo of Agent Skills (`SKILL.md`) installed as user-level skills in `${VIBE_HOME:-~/.vibe}/skills/` — the single source of truth, publishable to the cloud Vibe registry (Vibe Work / cloud sessions) | [packs/vibe-skills/README.md](packs/vibe-skills/README.md) |
 
 More harnesses can be added as new packs — see
 [AGENTS.md](AGENTS.md) → "Adding a pack".
