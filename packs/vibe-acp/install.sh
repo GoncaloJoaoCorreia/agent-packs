@@ -5,9 +5,9 @@
 #   AGENT_PACKS_ROOT=<payload root> sh packs/vibe-acp/install.sh check
 #   AGENT_PACKS_ROOT=<payload root> sh packs/vibe-acp/install.sh install <dest> <version> [--no-plugin]
 #
-# Shared mechanics come from scripts/install-lib.sh, found via
-# ${AGENT_PACKS_INSTALL_LIB:-$AGENT_PACKS_ROOT/scripts/install-lib.sh} (release tarballs
-# vendor a copy next to this script — G-113 M2). Pack metadata comes from pack.conf.
+# Shared mechanics come from install-lib.sh, found via $AGENT_PACKS_INSTALL_LIB, else the
+# copy vendored next to this script inside a release tarball ($AGENT_PACKS_ROOT/install-lib.sh),
+# else the repo checkout's scripts/install-lib.sh. Pack metadata comes from pack.conf.
 set -eu
 unset CDPATH
 
@@ -16,8 +16,16 @@ if [ -z "${AGENT_PACKS_ROOT:-}" ]; then
   echo "pack install.sh: AGENT_PACKS_ROOT is unset — invoke via the root install.sh" >&2
   exit 1
 fi
-# shellcheck disable=SC1090
-. "${AGENT_PACKS_INSTALL_LIB:-$AGENT_PACKS_ROOT/scripts/install-lib.sh}"
+if [ -n "${AGENT_PACKS_INSTALL_LIB:-}" ]; then
+  # shellcheck disable=SC1090,SC1091
+  . "$AGENT_PACKS_INSTALL_LIB"
+elif [ -f "$AGENT_PACKS_ROOT/install-lib.sh" ]; then
+  # shellcheck disable=SC1090,SC1091
+  . "$AGENT_PACKS_ROOT/install-lib.sh"
+else
+  # shellcheck disable=SC1090,SC1091
+  . "$AGENT_PACKS_ROOT/scripts/install-lib.sh"
+fi
 # shellcheck disable=SC1090,SC1091
 . "$PACK_DIR/pack.conf"  # metadata only: PACK_NAME PACK_DESCRIPTION PACK_DEFAULT_DEST PACK_META_PREFIX PACK_PREREQS PACK_LEGACY_*
 

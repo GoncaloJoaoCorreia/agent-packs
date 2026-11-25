@@ -10,7 +10,7 @@ packs/
     install.sh      # REQUIRED — the pack-owned installer (payload dirs, hooks, cleanup)
     <payload dirs>  # whatever the harness discovers at its config root (PACK_PAYLOAD_DIRS in install.sh)
     snippets/…      # optional extras — in the tarball, not installed (anything not in PACK_PAYLOAD_DIRS)
-    scripts/        # repo-only dev/validation tooling — STRIPPED from the release payload
+    scripts/        # repo-only dev/validation tooling + release.sh — STRIPPED from the release payload
     docs/           # repo-only docs — STRIPPED from the release payload
     README.md, AGENTS.md  # repo-only docs — STRIPPED from the release payload
 ```
@@ -68,14 +68,28 @@ from its own `pack.conf`. Optional hooks it defines:
 
 ## Release payload
 
-Each GitHub release carries `agent-packs.tar.gz` (top-level `agent-packs/` dir with
-`packs/ install.sh scripts/install-lib.sh LICENSE`) plus `agent-packs.tar.gz.sha256`. The
-release workflow strips `packs/*/scripts/`, `packs/*/docs/`, pack-level
-`README.md`/`AGENTS.md`, `test/` dirs under `plugins/`, plus any `node_modules/`,
-`.agent/` and `__pycache__/` from the payload (`packs/README.md`, the pack contract,
-ships on purpose). The installer downloads the tarball, verifies the checksum, and
-installs only the selected packs. The release also carries a legacy
-`opencode-agents.tar.gz` (old flat layout) + `SHA256SUMS` for pre-rename installers.
+Each GitHub release (tag `vX.Y.Z`, cut automatically on pushes to `main` that touch
+`packs/**`, `install.sh`, `scripts/**` or `.github/workflows/**`; docs-only diffs release
+nothing) carries:
+
+- `manifest.json` — `{schema, release, packs: {<name>: {version, description, asset,
+  sha256}}}`. Per-pack versions are computed from conventional commits since the last
+  release tag (`feat`→minor, `fix`→patch, `!`/`BREAKING CHANGE:`→major, highest wins;
+  path-changed without prefix → patch), seeded from the latest `v*` tag.
+- `packs/<name>.tar.gz` per pack — top-level `<name>/` with the payload + `pack.conf` +
+  `install.sh` + a vendored `install-lib.sh` (repo-only `scripts/`, `docs/`, pack-level
+  `README.md`/`AGENTS.md`, plugin `test/` dirs, plus any `node_modules/`, `.agent/`,
+  `__pycache__/` stripped). Unchanged packs are carried over from the previous release,
+  so every release is self-contained.
+
+The release pipeline (`.github/workflows/release.yml`) detects changed packs
+(`scripts/release-detect.sh`), runs each changed pack's own `packs/<name>/scripts/release.sh`
+to compute its version and build its tarball, assembles `manifest.json`
+(`scripts/assemble-manifest.py`), then tags and publishes. The installer's release mode
+fetches `releases/latest/download/manifest.json` (0 API calls), downloads the selected
+packs' tarballs, verifies each sha256 against the manifest entry, extracts, and dispatches
+to the vendored `install.sh`. `PACK@<version>` pins an older release tag (1 paginated
+releases-API call + direct manifest downloads).
 
 ## Adding a pack
 
@@ -83,9 +97,13 @@ installs only the selected packs. The release also carries a legacy
 2. Write `packs/<name>/install.sh` (payload dirs + hooks — copy an existing pack's as
    the template) and add the payload dirs — keep the pack self-contained (code lives
    under `packs/<name>/`).
-3. Add `packs/<name>/scripts/validate.sh` if the pack needs its own validation — the root
+3. Write `packs/<name>/scripts/release.sh` — a thin wrapper calling
+   `ap_release_pack` from `scripts/release-lib.sh` (add pack-specific release steps,
+   e.g. vibe-skills' cloud publish, after the call).
+4. Add `packs/<name>/scripts/validate.sh` if the pack needs its own validation — the root
    `scripts/validate.sh` dispatcher runs every pack's validator automatically.
-4. `scripts/validate.sh` (root) checks every `pack.conf` for the required metadata keys
-   (and rejects removed keys), `sh -n` + shellcheck on every `packs/*/install.sh`, and
-   smoke-installs every pack into a `mktemp` dest — run it locally and in CI before
-   pushing.
+5. `scripts/validate.sh` (root) checks every `pack.conf` for the required metadata keys
+   (and rejects removed keys), `sh -n` + shellcheck on every installer/release script,
+   smoke-installs every pack into a `mktemp` dest, unit-tests the release classification,
+   and runs an offline release-mode installer E2E against a `file://` fake release —
+   run it locally and in CI before pushing.
