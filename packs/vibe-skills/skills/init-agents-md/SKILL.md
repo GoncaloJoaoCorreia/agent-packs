@@ -56,6 +56,10 @@ only changes explicitly stated in the user's invocation prompt:
 - Conventional branch pattern: `type/short-kebab-description`, where `type` is a
   conventional-commit type (feat, fix, refactor, docs, chore, test, ci, perf,
   style, revert), e.g. `feat/init-agents-md`. One branch per change.
+- If the current task has an issue key (Linear, Jira, GitHub issue, ...), include
+  it: `type/ISSUE-KEY-short-kebab-description`, e.g. `feat/G-20-driver-state`.
+  Take the key from the task itself (issue URL, key in the prompt, or the forge
+  CLI) — never invent one. No issue → omit the key.
 
 ### Versioning
 
