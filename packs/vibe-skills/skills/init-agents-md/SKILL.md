@@ -1,6 +1,6 @@
 ---
 name: init-agents-md
-description: Initialize or update a repository's AGENTS.md — preloaded with the user's personal preferences (no inline comments ever, conventional commits without PR number, clarify-before-assuming, approval-first boundaries); inspects the repo, then writes a concise AGENTS.md at the repo root. Use when the user wants to set up, create, or refresh AGENTS.md in a project.
+description: Initialize or update a repository's AGENTS.md — preloaded with your standing conventions (no inline comments ever, conventional commits without PR number, clarify-before-assuming, approval-first boundaries); inspects the repo, then writes a concise AGENTS.md at the repo root. Use when the user wants to set up, create, or refresh AGENTS.md in a project.
 license: Unlicense
 compatibility: Requires a git repository; run from the repo root. Interactive (asks before overwriting / adjusting preferences).
 user-invocable: true
@@ -8,17 +8,17 @@ user-invocable: true
 
 # Init AGENTS.md
 
-Create or refresh the root `AGENTS.md` of the current repository. The user's personal
-preferences are **preloaded below** — write them into the file verbatim unless the user
-adjusts them for this repo; never re-ask each preference one by one.
+Create or refresh the root `AGENTS.md` of the current repository. Your standing
+conventions are **preloaded below** — write them into the file verbatim unless you
+adjust them for this repo; never re-ask each rule one by one.
 
-## Preloaded personal preferences
+## Preloaded conventions
 
-Write this block (adjusted only if the user says so) as the `## Personal preferences`
+Write this block (adjusted only if the user says so) as the `## Conventions`
 section of the AGENTS.md:
 
 ```md
-## Personal preferences
+## Conventions
 
 - Code comments: no inline comments, ever. Javadoc-style comments are allowed only
   for interface contract declarations, and only if needed.
@@ -40,19 +40,19 @@ section of the AGENTS.md:
    primary language(s), package manager + lockfile, test runner and commands,
    linter/formatter, CI workflows, existing `CONTRIBUTING.md` / README conventions,
    and the commit style from `git log`.
-3. **Ask one question**: "Use the preloaded personal preferences as-is for this
+3. **Ask one question**: "Use the preloaded conventions as-is for this
    repo, or adjust them?" Apply the answer; if they adjust, change only what they
    mention.
 4. **Write `AGENTS.md`** at the repo root — concise, factual, imperative. Sections:
-   **Repo** (stack + build/test/lint commands from step 2) and **Personal
-   preferences** (the preloaded block). Keep it under ~100 lines; link to
+   **Repo** (stack + build/test/lint commands from step 2) and **Conventions**
+   (the preloaded block). Keep it under ~100 lines; link to
    `CONTRIBUTING.md` or other docs instead of inlining them.
 5. **Verify**: re-read the written file, confirm the preloaded block is intact
    (unless adjusted), and summarize what was written and where.
 
 ## Rules
 
-- The preloaded block above is the only source for personal preferences — never
+- The preloaded block above is the only source for these conventions — never
   invent or "improve" them, and do not add a communication-style or test/lint
   verification policy (the user deliberately omits those).
 - AGENTS.md is instructions for agents, not a README: no marketing, no history.
