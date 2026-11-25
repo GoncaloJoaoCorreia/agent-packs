@@ -46,6 +46,8 @@ only changes explicitly stated in the user's invocation prompt:
   `CHANGELOG.md` with an `[Unreleased]` section on top and released versions as
   `## [X.Y.Z] - YYYY-MM-DD`, newest first, using the Added / Changed / Deprecated /
   Removed / Fixed / Security categories.
+- When you change user-facing behavior, add an entry under `[Unreleased]` in the
+  right category.
 
 ### Working style
 
