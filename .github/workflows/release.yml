@@ -1,42 +1,47 @@
 name: release
 
-# Manual-only release pipeline:
-#   1. validate the repo (./scripts/validate.sh — root dispatcher: install.sh syntax,
-#      pack.conf sanity, opencode pack agent-scripts tests, every pack's validators)
-#   2. publish the vibe-skills pack's skills to the Mistral registry (beta /v2/skills
-#      API; needs the MISTRAL_API_KEY secret; skipped with a warning when unset or
-#      when publish_skills=false) — fail-fast: runs BEFORE the tag is pushed
-#   3. compute the tag (auto patch-bump from latest v* tag, or the `version` input)
-#   4. tag + push main
-#   5. build agent-packs.tar.gz + agent-packs.tar.gz.sha256 (the installer's asset
-#      convention: one top-level agent-packs/ dir with packs/ install.sh
-#      scripts/install-lib.sh LICENSE — the pack-owned packs/*/install.sh source
-#      scripts/install-lib.sh via $AGENT_PACKS_ROOT/scripts/install-lib.sh),
-#      plus a legacy opencode-agents.tar.gz (old layout) + SHA256SUMS so
-#      pre-rename installers still served from the old raw URL keep working
-#   6. create the GitHub release with an auto changelog
-#   7. self-test: download the new release, verify checksums, diff against checkout,
-#      run install.sh --release into a temp dir, and run the PREVIOUS tag's
-#      install.sh against the legacy assets
+# Manifest release pipeline (G-113 M2):
+#   1. validate the repo (./scripts/validate.sh)
+#   2. classify the push diff (scripts/release-detect.sh, baseline = previous main SHA,
+#      fallback latest v* tag): packs/<name>/** payload paths -> that pack; infra paths
+#      (install.sh, scripts/**, workflows, packs/README.md) -> all packs; docs-only ->
+#      exit 0, no release
+#   3. per changed pack run pack-owned packs/<name>/scripts/release.sh: per-pack version
+#      from conventional commits since the latest v* tag (feat->minor, fix->patch,
+#      !/BREAKING CHANGE:->major, highest wins, no-prefix->patch; seeded from the latest
+#      v* tag), build packs/<name>.tar.gz (payload + pack.conf + install.sh + vendored
+#      install-lib.sh, repo-only stripped) + a meta fragment {version, description,
+#      asset, sha256}. vibe-skills' release.sh also publishes to the cloud registry
+#      (MISTRAL_API_KEY unset -> warn + skip)
+#   4. assemble manifest.json (scripts/assemble-manifest.py); unchanged packs carry their
+#      entry + tarball over from the previous release, so every release is self-contained
+#   5. tag vX.Y.Z (auto patch-bump of the latest v* tag; aborts if the tag exists) + push
+#   6. gh release create <tag> manifest.json packs/*.tar.gz
+#   7. self-test: after the latest pointer settles, install each changed pack from the new
+#      release into mktemp dests via the installer's release mode, assert meta files +
+#      versions, verify tarball checksums against the manifest, grep tarballs for
+#      repo-only paths
 on:
+  push:
+    branches: [main]
+    paths:
+      - 'packs/**'
+      - 'install.sh'
+      - 'scripts/**'
+      - '.github/workflows/**'
   workflow_dispatch:
     inputs:
       version:
         description: "Release version as vX.Y.Z (or X.Y.Z). Empty = auto-increment patch from the latest tag."
         required: false
         type: string
-      publish_skills:
-        description: "Publish packs/vibe-skills skills to the Mistral cloud registry (needs the MISTRAL_API_KEY secret)."
-        required: false
-        type: boolean
-        default: true
 
 permissions:
   contents: write
 
 concurrency:
   group: release
-  cancel-in-progress: false
+  cancel-in-progress: false  # queue releases instead of cancelling
 
 env:
   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -64,24 +69,76 @@ jobs:
       - name: Validate repository
         run: ./scripts/validate.sh
 
-      - name: Publish vibe-skills to the cloud registry
-        if: ${{ inputs.publish_skills }}
+      - name: Detect changed packs
+        id: detect
         env:
-          # passed via env, never interpolated into the command line
+          BASELINE: ${{ github.event.before }}
+        run: |
+          set -eu
+          before="${BASELINE:-}"
+          # a zero SHA (new branch) or a missing object -> fall back to the latest v* tag
+          if [ -n "$before" ] && { [ "$before" = "0000000000000000000000000000000000000000" ] || ! git cat-file -e "$before^{commit}" 2>/dev/null; }; then
+            before=""
+          fi
+          out=$(REPO_ROOT="$PWD" BASELINE="$before" sh scripts/release-detect.sh)
+          echo "$out"
+          release=$(printf '%s\n' "$out" | sed -n 's/^release=//p')
+          packs=$(printf '%s\n' "$out" | sed -n 's/^packs=//p')
+          echo "release=${release:-0}" >> "$GITHUB_OUTPUT"
+          echo "packs=${packs:-}" >> "$GITHUB_OUTPUT"
+          if [ "${release:-0}" = "1" ] && [ "$packs" = "all" ]; then
+            packs=$(for c in packs/*/pack.conf; do basename "$(dirname "$c")"; done | LC_ALL=C sort | tr '\n' ' ')
+            echo "packs=$packs" >> "$GITHUB_OUTPUT"
+          fi
+          if [ "${release:-0}" = "1" ]; then
+            echo "changed packs: $packs"
+          else
+            echo "docs-only diff — no release"
+          fi
+
+      - name: Build changed pack artifacts
+        if: ${{ steps.detect.outputs.release == '1' }}
+        env:
           MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
         run: |
           set -eu
-          if [ -z "$MISTRAL_API_KEY" ]; then
-            echo "warning: MISTRAL_API_KEY secret is not set — skipping cloud publish of vibe-skills"
-            echo "set it (Settings > Secrets and variables > Actions) to publish skills on release"
+          mkdir -p artifacts
+          for p in ${{ steps.detect.outputs.packs }}; do
+            REPO_ROOT="$PWD" OUT_DIR="$PWD/artifacts" MISTRAL_API_KEY="${MISTRAL_API_KEY:-}" \
+              sh "packs/$p/scripts/release.sh"
+          done
+          ls -la artifacts artifacts/packs
+
+      - name: Carry over unchanged packs from the previous release
+        if: ${{ steps.detect.outputs.release == '1' }}
+        run: |
+          set -eu
+          prev_tag=$(git tag -l 'v*' | sort -V | tail -n 1 || true)
+          if [ -z "$prev_tag" ]; then
+            echo "no previous v* tag — manifest lists only the changed packs"
             exit 0
           fi
-          # ubuntu-latest ships python3; the script is stdlib-only and finds existing
-          # registry skills by name via the API, so no state needs to be committed back
-          python3 packs/vibe-skills/scripts/publish-to-cloud.py --apply
+          base="https://github.com/${{ github.repository }}/releases/download/$prev_tag"
+          curl -fsSL "$base/manifest.json" -o artifacts/manifest.prev.json
+          PREV_TAG="$prev_tag" python3 - artifacts/manifest.prev.json artifacts ${{ steps.detect.outputs.packs }} <<'PY'
+          import json, os, sys, urllib.request
+          prev_path, out_dir, changed = sys.argv[1], sys.argv[2], sys.argv[3].split()
+          prev = json.load(open(prev_path))["packs"]
+          base = f"https://github.com/{os.environ['GITHUB_REPOSITORY']}/releases/download/{os.environ['PREV_TAG']}"
+          all_packs = sorted(d for d in os.listdir("packs") if os.path.isfile(f"packs/{d}/pack.conf"))
+          for name in all_packs:
+              if name in changed or name not in prev:
+                  continue
+              asset = prev[name]["asset"]
+              dest = os.path.join(out_dir, asset)
+              os.makedirs(os.path.dirname(dest), exist_ok=True)
+              print(f"carrying over {name} {prev[name]['version']} ({asset}) from {os.environ['PREV_TAG']}")
+              urllib.request.urlretrieve(f"{base}/{asset}", dest)
+          PY
 
       - name: Compute release version
         id: version
+        if: ${{ steps.detect.outputs.release == '1' }}
         env:
           VERSION_INPUT: ${{ inputs.version }}
         run: |
@@ -129,8 +186,24 @@ jobs:
           echo "version=$new" >> "$GITHUB_OUTPUT"
           echo "new tag: $new (latest was: ${latest:-none})"
 
+      - name: Assemble manifest.json
+        if: ${{ steps.detect.outputs.release == '1' }}
+        run: |
+          set -eu
+          tag_version="${{ steps.version.outputs.version }}"
+          prev_args=""
+          if [ -f artifacts/manifest.prev.json ]; then
+            prev_args="--prev-manifest artifacts/manifest.prev.json"
+          fi
+          python3 scripts/assemble-manifest.py --out artifacts/manifest.json \
+            --release "$tag_version" --artifacts artifacts \
+            --changed "${{ steps.detect.outputs.packs }}" \
+            --repo-root "$PWD" $prev_args
+          cat artifacts/manifest.json
+
       - name: Create and push tag
         id: tag
+        if: ${{ steps.detect.outputs.release == '1' }}
         run: |
           set -eu
           tag="${{ steps.version.outputs.version }}"
@@ -145,56 +218,8 @@ jobs:
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
           echo "pushed tag $tag"
 
-      - name: Build release artifacts
-        run: |
-          set -eu
-          stage_root=$(mktemp -d)
-          mkdir -p "$stage_root/agent-packs"
-          # -L dereferences symlinked placeholder agents (plan-thorough.md)
-          cp -RL packs install.sh LICENSE "$stage_root/agent-packs/"
-          # the pack-owned installers source the shared mechanics from
-          # $AGENT_PACKS_ROOT/scripts/install-lib.sh — ship exactly that file
-          # (packs/*/install.sh ship inside packs/; vendoring a copy into each
-          # pack tarball comes with G-113 M2)
-          mkdir -p "$stage_root/agent-packs/scripts"
-          cp -RL scripts/install-lib.sh "$stage_root/agent-packs/scripts/"
-          # strip repo-only dev files from every pack: scripts/, docs/, pack-level
-          # README.md/AGENTS.md (the payload ships packs/README.md + pack.conf + payload dirs)
-          find "$stage_root/agent-packs/packs" -mindepth 2 -maxdepth 2 \
-            \( -name scripts -o -name docs -o -name README.md -o -name AGENTS.md \) \
-            -prune -exec rm -rf {} +
-          # plugin test dirs are repo-only too: OpenCode loads a plugin's entry file
-          # only, tests are never needed at runtime
-          find "$stage_root/agent-packs/packs" -type d -path '*/plugins/*' -name test \
-            -prune -exec rm -rf {} +
-          # strip any gitignored .agent/ (legacy driver history), __pycache__/ and
-          # node_modules/ from the payload: OpenCode discovers agents/**/*.md
-          # recursively, so shipped .agent/*.md would be installed and registered as
-          # agents ("agents/.agent/history" etc.)
-          find "$stage_root/agent-packs" -type d \( -name .agent -o -name __pycache__ -o -name node_modules \) -prune -exec rm -rf {} +
-          tar -czf agent-packs.tar.gz -C "$stage_root" agent-packs
-          sha256sum agent-packs.tar.gz > agent-packs.tar.gz.sha256
-          cat agent-packs.tar.gz.sha256
-          echo "artifacts: $(tar -tzf agent-packs.tar.gz | wc -l) files"
-
-          # Legacy alias for pre-rename installers: the old raw URL
-          # (…/opencode-agents/main/install.sh) can still serve the OLD install.sh,
-          # which downloads opencode-agents.tar.gz + SHA256SUMS and expects a top-level
-          # opencode-agents/ dir with agents/ commands/ skills/ agent-scripts/ plugins/.
-          # Compose that old-layout tarball from the new packs/ layout.
-          # SHA256SUMS must list ONLY the legacy asset — the old installer runs
-          # `sha256sum -c SHA256SUMS` with just that file downloaded.
-          mkdir -p "$stage_root/opencode-agents/skills"
-          cp -RL packs/opencode/agents packs/opencode/commands packs/opencode/plugins packs/opencode/snippets install.sh LICENSE "$stage_root/opencode-agents/"
-          cp -RL packs/opencode/skills/driver-conventions "$stage_root/opencode-agents/skills/"
-          cp -RL packs/opencode/agent-scripts "$stage_root/opencode-agents/agent-scripts"
-          find "$stage_root/opencode-agents" -type d \( -name .agent -o -name __pycache__ -o -name node_modules \) -prune -exec rm -rf {} +
-          tar -czf opencode-agents.tar.gz -C "$stage_root" opencode-agents
-          sha256sum opencode-agents.tar.gz > SHA256SUMS
-          cat SHA256SUMS
-          echo "legacy artifacts: $(tar -tzf opencode-agents.tar.gz | wc -l) files"
-
       - name: Create GitHub release
+        if: ${{ steps.detect.outputs.release == '1' }}
         run: |
           set -eu
           tag="${{ steps.tag.outputs.tag }}"
@@ -206,12 +231,13 @@ jobs:
             header="All changes"
             body=$(git log --oneline)
           fi
-          gh release create "$tag" agent-packs.tar.gz agent-packs.tar.gz.sha256 opencode-agents.tar.gz SHA256SUMS \
+          gh release create "$tag" artifacts/manifest.json artifacts/packs/*.tar.gz \
             --title "$tag" \
             --notes "## $header"$'\n\n'"$body"
-          echo "created release $tag"
+          echo "created release $tag with manifest.json + pack tarballs"
 
       - name: Self-test the new release
+        if: ${{ steps.detect.outputs.release == '1' }}
         run: |
           set -eu
           tag="${{ steps.tag.outputs.tag }}"
@@ -219,104 +245,55 @@ jobs:
           # self-test installs via releases/latest, so let the pointer settle first
           sleep 20
           t=$(mktemp -d)
-          gh release download "$tag" --dir "$t" --pattern '*.tar.gz' --pattern '*.sha256' --pattern SHA256SUMS
-          (cd "$t" && sha256sum -c agent-packs.tar.gz.sha256 && sha256sum -c SHA256SUMS)
-          # the payload must not carry repo-only pack dev files or bytecode dirs
-          # (patterns anchored with (^|/) so the top-level "agent-packs/" dir name
-          # itself cannot match; packs/README.md — the pack contract — ships on purpose)
-          if tar -tzf "$t/agent-packs.tar.gz" | grep -Eq '(^|/)packs/[^/]+/(scripts|docs)/|(^|/)packs/[^/]+/plugins/.*/test/|node_modules|(^|/)(\.agent|__pycache__)/|(^|/)packs/[^/]+/(README|AGENTS)\.md'; then
-            echo "FAIL: payload carries dev files or .agent/__pycache__/node_modules" >&2
-            tar -tzf "$t/agent-packs.tar.gz" | grep -E '(^|/)packs/[^/]+/(scripts|docs)/|(^|/)packs/[^/]+/plugins/.*/test/|node_modules|(^|/)(\.agent|__pycache__)/|(^|/)packs/[^/]+/(README|AGENTS)\.md' >&2
-            exit 1
-          fi
-          # the legacy alias must be the OLD layout (top-level opencode-agents/ with
-          # agents/ commands/ skills/ agent-scripts/ plugins/) for pre-rename installers
-          tar -tzf "$t/opencode-agents.tar.gz" > "$t/legacy-list"
-          for f in agents/driver.md commands/driver.md skills/driver-conventions/SKILL.md agent-scripts/driver-state.py plugins/driver-viz/tui.tsx; do
-            grep -qxF "opencode-agents/$f" "$t/legacy-list" || { echo "FAIL: legacy tarball missing opencode-agents/$f" >&2; exit 1; }
-          done
-          tar -xzf "$t/agent-packs.tar.gz" -C "$t"
-          # the payload must carry the pack-owned installers + the shared lib they source
-          test -f "$t/agent-packs/scripts/install-lib.sh"
-          diff "$t/agent-packs/scripts/install-lib.sh" scripts/install-lib.sh
-          for p in opencode vibe-acp vibe-skills; do
-            test -f "$t/agent-packs/packs/$p/install.sh" || { echo "FAIL: tarball missing packs/$p/install.sh" >&2; exit 1; }
-          done
-          # installed payload must match the checkout (payload dirs)
-          diff -r --exclude=.agent --exclude=__pycache__ "$t/agent-packs/packs/opencode/agents" packs/opencode/agents
-          diff -r --exclude=.agent --exclude=__pycache__ "$t/agent-packs/packs/opencode/commands" packs/opencode/commands
-          diff -r --exclude=.agent --exclude=__pycache__ --exclude=test "$t/agent-packs/packs/opencode/plugins" packs/opencode/plugins
-          diff -r --exclude=.agent --exclude=__pycache__ "$t/agent-packs/packs/opencode/snippets" packs/opencode/snippets
-          # the vibe-acp pack ships its payload (pack.conf + plugins/ + snippets/)
-          diff -r --exclude=.agent --exclude=__pycache__ --exclude=test "$t/agent-packs/packs/vibe-acp/plugins" packs/vibe-acp/plugins
-          diff -r --exclude=.agent --exclude=__pycache__ "$t/agent-packs/packs/vibe-acp/snippets" packs/vibe-acp/snippets
-          test -f "$t/agent-packs/packs/vibe-acp/pack.conf"
-          # vibe-acp installs from the release payload into a throwaway config dir
-          sh install.sh --release --dest "$t/cfg-vibe" vibe-acp >/dev/null
-          test -f "$t/cfg-vibe/plugins/vibe-acp/index.ts"
-          test -f "$t/cfg-vibe/plugins/vibe-acp/provider/src/index.ts"
-          test -f "$t/cfg-vibe/agent-packs.vibe-acp.manifest"
-          test ! -e "$t/cfg-vibe/snippets"
-          sh install.sh --release --list | grep -q 'vibe-acp'
-          # the vibe-skills pack ships its skills/ payload (pack.conf + skills/; scripts/ + docs/ stripped)
-          diff -r --exclude=.agent --exclude=__pycache__ "$t/agent-packs/packs/vibe-skills/skills" packs/vibe-skills/skills
-          test -f "$t/agent-packs/packs/vibe-skills/pack.conf"
-          test ! -e "$t/agent-packs/packs/vibe-skills/scripts"
-          test ! -e "$t/agent-packs/packs/vibe-skills/docs"
-          # vibe-skills installs from the release payload into a throwaway Vibe home
-          sh install.sh --release --dest "$t/cfg-vibe-skills" vibe-skills >/dev/null
-          test -f "$t/cfg-vibe-skills/skills/init-agents-md/SKILL.md"
-          test -f "$t/cfg-vibe-skills/agent-packs.vibe-skills.manifest"
-          test ! -e "$t/cfg-vibe-skills/scripts"
-          sh install.sh --release --list | grep -q 'vibe-skills'
-          diff -r --exclude=.agent --exclude=__pycache__ "$t/agent-packs/packs/opencode/agent-scripts" packs/opencode/agent-scripts
-          diff -r --exclude=.agent --exclude=__pycache__ "$t/agent-packs/packs/opencode/skills/driver-conventions" packs/opencode/skills/driver-conventions
-          # full installer path: download payload, verify checksum, install into temp dir
-          # (ubuntu-latest has python3 + git preinstalled, so the prereq check passes)
-          sh install.sh --release --dest "$t/cfg" opencode
-          test -f "$t/cfg/agents/driver.md"
-          test -f "$t/cfg/plugins/driver-viz/tui.tsx"
-          test -f "$t/cfg/skills/driver-conventions/SKILL.md"
-          test -f "$t/cfg/agent-scripts/detect-forge.sh"
-          test -f "$t/cfg/agent-scripts/driver-state.py"
-          test -f "$t/cfg/agent-scripts/save-linear-attachments.py"
-          test -f "$t/cfg/agent-scripts/qa-command.sh"
-          test -f "$t/cfg/agent-packs.opencode.manifest"
-          test -f "$t/cfg/agent-packs.opencode.version"
-          # snippets/ is ship-only — it must NOT be installed
-          test ! -e "$t/cfg/snippets"
-          # the payload must not carry .agent/ or __pycache__/ (they would be
-          # discovered as agents / are bytecode junk)
-          test -z "$(find "$t/cfg" -type d \( -name .agent -o -name __pycache__ \) -print -quit)"
-          ! grep -Eq '(^|/)(\.agent|__pycache__)/' "$t/cfg/agent-packs.opencode.manifest"
-          # --list shows the pack
-          sh install.sh --release --list | grep -q 'opencode'
-          # legacy pre-rename manifest is cleaned up once
-          printf 'agents/gone.md\n' > "$t/cfg/opencode-agents.manifest"
-          echo x > "$t/cfg/agents/gone.md"
-          printf 'v0.0.0\n' > "$t/cfg/opencode-agents.version"
-          sh install.sh --release --dest "$t/cfg" opencode >/dev/null
-          test ! -e "$t/cfg/agents/gone.md"
-          test ! -e "$t/cfg/opencode-agents.manifest"
-          test ! -e "$t/cfg/opencode-agents.version"
-          # legacy path: the last PRE-RENAME install.sh (REPO=opencode-agents, still
-          # served from the old raw URL) must keep working end-to-end via the old repo
-          # name (release URLs redirect) + the legacy opencode-agents.tar.gz asset
-          old_tag=$(git tag -l 'v*' | sort -rV | while read -r tg; do
-            if git show "$tg:install.sh" 2>/dev/null | grep -q 'REPO="GoncaloJoaoCorreia/opencode-agents"'; then
-              printf '%s\n' "$tg"; break
+          gh release download "$tag" --dir "$t" --pattern 'manifest.json' --pattern 'packs/*.tar.gz'
+          # manifest sanity: schema, release tag, one entry per pack with all fields
+          python3 - "$t/manifest.json" "$tag" <<'PY'
+          import json, sys
+          manifest, tag = json.load(open(sys.argv[1])), sys.argv[2]
+          assert manifest["schema"] == 1, manifest
+          assert manifest["release"] == tag, manifest
+          assert manifest["packs"], "manifest lists no packs"
+          for name, e in manifest["packs"].items():
+              for k in ("version", "description", "asset", "sha256"):
+                  assert e.get(k), f"{name}: missing {k}"
+              assert e["asset"] == f"packs/{name}.tar.gz", e
+          print(f"ok: manifest schema=1 release={tag} packs={sorted(manifest['packs'])}")
+          PY
+          # every tarball's sha256 matches its manifest entry
+          python3 - "$t/manifest.json" "$t" <<'PY'
+          import hashlib, json, os, sys
+          manifest, dir_ = json.load(open(sys.argv[1])), sys.argv[2]
+          for name, e in manifest["packs"].items():
+              p = os.path.join(dir_, e["asset"])
+              h = hashlib.sha256(open(p, "rb").read()).hexdigest()
+              assert h == e["sha256"], f"{name}: sha256 mismatch"
+          print("ok: all tarball checksums match the manifest")
+          PY
+          # payload hygiene: no repo-only paths, and the pack installer + vendored lib ship
+          for tb in "$t"/packs/*.tar.gz; do
+            name=$(basename "$tb" .tar.gz)
+            if tar -tzf "$tb" | grep -Eq "(^|/)${name}/(scripts|docs)/|(^|/)${name}/(README|AGENTS)\.md|(^|/)plugins/[^/]+/test/|node_modules|(^|/)(\.agent|__pycache__)/"; then
+              echo "FAIL: $name tarball carries repo-only paths:" >&2
+              tar -tzf "$tb" | grep -E "(^|/)${name}/(scripts|docs)/|(^|/)${name}/(README|AGENTS)\.md|(^|/)plugins/[^/]+/test/|node_modules|(^|/)(\.agent|__pycache__)/" >&2
+              exit 1
             fi
-          done)
-          if [ -n "$old_tag" ]; then
-            git show "${old_tag}:install.sh" > "$t/old-install.sh"
-            sh "$t/old-install.sh" --release --dest "$t/cfg-old" >/dev/null
-            test -f "$t/cfg-old/agents/driver.md"
-            test -f "$t/cfg-old/skills/driver-conventions/SKILL.md"
-            test -f "$t/cfg-old/agent-scripts/driver-state.py"
-            test -f "$t/cfg-old/opencode-agents.manifest"
-            test -f "$t/cfg-old/opencode-agents.version"
-            echo "legacy pre-rename installer (tag $old_tag) still installs from the $tag assets"
-          else
-            echo "note: no pre-rename tag found — skipping legacy installer self-test"
-          fi
+            for f in "$name/install.sh" "$name/install-lib.sh" "$name/pack.conf"; do
+              tar -tzf "$tb" | grep -qxF "$f" || { echo "FAIL: $name tarball missing $f" >&2; exit 1; }
+            done
+          done
+          echo "ok: tarballs are payload-only and carry install.sh + install-lib.sh + pack.conf"
+          # non-interactive install of each changed pack from the new release (latest flow)
+          # into a mktemp dest, plus the PACK@<tag> pinned flow
+          for p in ${{ steps.detect.outputs.packs }}; do
+            prefix=$( (unset PACK_META_PREFIX; . "packs/$p/pack.conf"; printf '%s' "$PACK_META_PREFIX") )
+            sh install.sh --release --dest "$t/cfg-$p" "$p" >/dev/null
+            [ -f "$t/cfg-$p/$prefix.manifest" ] || { echo "FAIL: $p: no $prefix.manifest" >&2; exit 1; }
+            want=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["packs"][sys.argv[2]]["version"])' "$t/manifest.json" "$p")
+            got=$(cat "$t/cfg-$p/$prefix.version")
+            [ "$got" = "$want" ] || { echo "FAIL: $p: version '$got' != manifest '$want'" >&2; exit 1; }
+            sh install.sh --release --dest "$t/cfgv-$p" "$p@$tag" >/dev/null
+            [ "$(cat "$t/cfgv-$p/$prefix.version")" = "$want" ] || { echo "FAIL: $p@$tag version mismatch" >&2; exit 1; }
+            echo "ok: $p installed from release $tag (latest + @$tag), version $want"
+          done
+          sh install.sh --release --list | grep -q 'opencode'
           echo "self-test OK: release $tag verifies and installs"
