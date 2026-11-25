@@ -13,8 +13,8 @@ A personal library of agent-harness extensions — **packs**. Each pack under
 
 | Latest | Harness | What you get | Docs |
 |---|---|---|---|
-| [![opencode](https://img.shields.io/badge/dynamic/json?url=https://github.com/GoncaloJoaoCorreia/agent-packs/releases/latest/download/manifest.json&query=%24%5B%27packs%27%5D%5B%27opencode%27%5D%5B%27version%27%5D&label=opencode)](https://github.com/GoncaloJoaoCorreia/agent-packs/releases/latest) | [<img src="https://cdn.simpleicons.org/opencode/black/white" width="18" height="18" alt="OpenCode v2">](https://opencode.ai/v2/docs/) | `/driver` feature-cycle orchestrator | [packs/opencode/README.md](packs/opencode/README.md) |
-| [![vibe-acp](https://img.shields.io/badge/dynamic/json?url=https://github.com/GoncaloJoaoCorreia/agent-packs/releases/latest/download/manifest.json&query=%24%5B%27packs%27%5D%5B%27vibe-acp%27%5D%5B%27version%27%5D&label=vibe-acp)](https://github.com/GoncaloJoaoCorreia/agent-packs/releases/latest) | [<img src="https://cdn.simpleicons.org/opencode/black/white" width="18" height="18" alt="OpenCode v2">](https://opencode.ai/v2/docs/) | Mistral OpenCode provider over ACP | [packs/vibe-acp/README.md](packs/vibe-acp/README.md) |
+| [![open-driver](https://img.shields.io/badge/dynamic/json?url=https://github.com/GoncaloJoaoCorreia/agent-packs/releases/latest/download/manifest.json&query=%24%5B%27packs%27%5D%5B%27open-driver%27%5D%5B%27version%27%5D&label=open-driver)](https://github.com/GoncaloJoaoCorreia/agent-packs/releases/latest) | [<img src="https://cdn.simpleicons.org/opencode/black/white" width="18" height="18" alt="OpenCode v2">](https://opencode.ai/v2/docs/) | `/driver` feature-cycle orchestrator | [packs/open-driver/README.md](packs/open-driver/README.md) |
+| [![vibe-bridge](https://img.shields.io/badge/dynamic/json?url=https://github.com/GoncaloJoaoCorreia/agent-packs/releases/latest/download/manifest.json&query=%24%5B%27packs%27%5D%5B%27vibe-bridge%27%5D%5B%27version%27%5D&label=vibe-bridge)](https://github.com/GoncaloJoaoCorreia/agent-packs/releases/latest) | [<img src="https://cdn.simpleicons.org/opencode/black/white" width="18" height="18" alt="OpenCode v2">](https://opencode.ai/v2/docs/) | Mistral OpenCode provider over ACP | [packs/vibe-bridge/README.md](packs/vibe-bridge/README.md) |
 | [![vibe-skills](https://img.shields.io/badge/dynamic/json?url=https://github.com/GoncaloJoaoCorreia/agent-packs/releases/latest/download/manifest.json&query=%24%5B%27packs%27%5D%5B%27vibe-skills%27%5D%5B%27version%27%5D&label=vibe-skills)](https://github.com/GoncaloJoaoCorreia/agent-packs/releases/latest) | [<img src="https://cdn.simpleicons.org/mistralai" width="18" height="18" alt="Mistral Vibe CLI">](https://github.com/mistralai/mistral-vibe) | Collection of agent skills for Mistral Vibe | [packs/vibe-skills/README.md](packs/vibe-skills/README.md) |
 
 More harnesses can be added as new packs — see
@@ -30,8 +30,8 @@ The installer opens a checkbox TUI listing the available packs and their version
 several; left/right cycles the highlighted pack's version). To skip the prompt:
 
 ```sh
-sh -s -- opencode          # one pack, latest release, non-interactive
-sh -s -- opencode@v2.2.0   # one pack pinned to a release tag
+sh -s -- open-driver          # one pack, latest release, non-interactive
+sh -s -- open-driver@v2.2.0   # one pack pinned to a release tag
 sh -s -- all               # every pack
 install.sh --list          # just list the packs + versions
 install.sh --plain         # numbered prompt instead of the TUI
@@ -49,7 +49,7 @@ Each GitHub release carries a `manifest.json` (per-pack `version`, `description`
 against the manifest, and installs only the packs you selected. Installs are copy-based and
 write a per-pack `<prefix>.version` + `<prefix>.manifest` into the config dir, which drives
 stale-file cleanup on reinstall. The installer requires `python3` and `git` for the
-opencode pack (hard prerequisite — it fails with a clear message otherwise).
+open-driver pack (hard prerequisite — it fails with a clear message otherwise).
 
 ## Repo layout
 

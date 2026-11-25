@@ -14,7 +14,7 @@
 #   ap_stale_cleanup <manifest> <new-list> <dest> <managed-top...>
 #   ap_install_pack <pack-dir> <dir...>            full install; config via AP_* variables:
 #     AP_DEST AP_PREFIX AP_VERSION AP_MANAGED (required)
-#     AP_LEGACY_MANIFEST AP_LEGACY_CLEANUP (optional)
+#     AP_LEGACY_MANIFEST (word list of old manifest filenames) AP_LEGACY_CLEANUP (optional)
 
 # ap_check_prereqs <pack> <tool...> — every tool must execute `tool --version`
 ap_check_prereqs() {
@@ -108,11 +108,12 @@ ap_install_pack() {
 
   # shellcheck disable=SC2086  # $AP_MANAGED is an intentional word list
   ap_stale_cleanup "$AP_DEST/${AP_PREFIX}.manifest" "$_ap_new" "$AP_DEST" $AP_MANAGED
-  if [ -n "${AP_LEGACY_MANIFEST:-}" ]; then
+  # shellcheck disable=SC2086  # $AP_LEGACY_MANIFEST is an intentional word list
+  for _ap_lm in ${AP_LEGACY_MANIFEST:-}; do
     # shellcheck disable=SC2086
-    ap_stale_cleanup "$AP_DEST/$AP_LEGACY_MANIFEST" "$_ap_new" "$AP_DEST" $AP_MANAGED
-    rm -f "$AP_DEST/$AP_LEGACY_MANIFEST"
-  fi
+    ap_stale_cleanup "$AP_DEST/$_ap_lm" "$_ap_new" "$AP_DEST" $AP_MANAGED
+    rm -f "$AP_DEST/$_ap_lm"
+  done
   # shellcheck disable=SC2086  # $AP_LEGACY_CLEANUP is an intentional word list
   for _ap_f in ${AP_LEGACY_CLEANUP:-}; do
     rm -f "$AP_DEST/$_ap_f"

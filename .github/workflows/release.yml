@@ -295,5 +295,5 @@ jobs:
             [ "$(cat "$t/cfgv-$p/$prefix.version")" = "$want" ] || { echo "FAIL: $p@$tag version mismatch" >&2; exit 1; }
             echo "ok: $p installed from release $tag (latest + @$tag), version $want"
           done
-          sh install.sh --release --list | grep -q 'opencode'
+          sh install.sh --release --list | grep -q 'open-driver'
           echo "self-test OK: release $tag verifies and installs"

@@ -281,8 +281,8 @@ fi
 # shellcheck disable=SC2086  # $ALL_PACKS is an intentional word list
 DEFAULT_PACK=$(printf '%s\n' $ALL_PACKS | head -n 1)
 # shellcheck disable=SC2086
-if printf '%s\n' $ALL_PACKS | grep -qx opencode; then
-  DEFAULT_PACK="opencode"
+if printf '%s\n' $ALL_PACKS | grep -qx open-driver; then
+  DEFAULT_PACK="open-driver"
 fi
 
 if [ "$DO_LIST" = "1" ]; then
