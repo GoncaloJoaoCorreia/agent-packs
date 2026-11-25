@@ -124,10 +124,17 @@ jobs:
             echo "previous release $prev_tag has no manifest.json (pre-manifest release) — manifest lists only the changed packs"
             exit 0
           fi
-          PREV_TAG="$prev_tag" python3 - artifacts/manifest.prev.json artifacts ${{ steps.detect.outputs.packs }} <<'PY'
+          PREV_TAG="$prev_tag" python3 - artifacts/manifest.prev.json artifacts "${{ steps.detect.outputs.packs }}" <<'PY'
           import json, os, sys, urllib.request
           prev_path, out_dir, changed = sys.argv[1], sys.argv[2], sys.argv[3].split()
-          prev = json.load(open(prev_path))["packs"]
+          doc = json.load(open(prev_path))
+          prev = doc["packs"]
+          # GitHub release assets are bare filenames; manifests written before that fix
+          # may carry "packs/<name>.tar.gz" paths, which 404 on download — normalize to the
+          # basename for both the download and the carried-over manifest entry
+          for e in prev.values():
+              e["asset"] = os.path.basename(e.get("asset", ""))
+          json.dump(doc, open(prev_path, "w"), indent=2, sort_keys=True, ensure_ascii=False)
           base = f"https://github.com/{os.environ['GITHUB_REPOSITORY']}/releases/download/{os.environ['PREV_TAG']}"
           all_packs = sorted(d for d in os.listdir("packs") if os.path.isfile(f"packs/{d}/pack.conf"))
           for name in all_packs:
