@@ -20,11 +20,25 @@ section of the AGENTS.md:
 ```md
 ## Conventions
 
-- Code comments: no inline comments, ever. Javadoc-style comments are allowed only
-  for interface contract declarations, and only if needed.
-- Commits: conventional commits — `type(scope): subject`, imperative mood, no PR
-  number in the message.
+### Comments
+
+- No inline comments, ever — no `//`, `#`, or `/* ... */` comments, and no docstrings
+  that restate what the code does. Code must be self-explanatory.
+- The only comments allowed are Javadoc-style (`/** ... */`) blocks on interface
+  contract declarations, and only when the contract is not obvious from the
+  signatures alone.
+
+### Commits
+
+- Conventional commits — `type(scope): subject`, imperative mood, no PR number in
+  the message.
+
+### Working style
+
 - When a request is ambiguous, ask one short clarifying question before assuming.
+
+### Approval-first boundaries
+
 - Ask for explicit approval before: destructive git operations (`reset --hard`,
   `clean -fd`, `branch -D`, ...), non-local database writes (migrations, deletes,
   anything but a local dev database), and deploys / package publishing /
@@ -56,7 +70,8 @@ section of the AGENTS.md:
   invent or "improve" them, and do not add a communication-style or test/lint
   verification policy (the user deliberately omits those).
 - AGENTS.md is instructions for agents, not a README: no marketing, no history.
-- When writing any file (including AGENTS.md itself): no inline comments, ever —
-  Javadoc-style only for interface contract declarations, if needed.
+- When writing any file (including AGENTS.md itself), follow the Comments
+  convention above: no inline comments, ever — Javadoc-style only for interface
+  contract declarations, if needed.
 - Ask before overwriting an existing `AGENTS.md`; reference existing convention
   docs instead of duplicating them.
