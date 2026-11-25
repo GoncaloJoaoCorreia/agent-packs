@@ -113,12 +113,12 @@ echo "ok: --plain with pack args installs non-interactively"
 
 echo "== TUI picker smoke (pty via script(1), skipped when unavailable) =="
 if command -v script >/dev/null 2>&1; then
-  printf ' \r' | script -q /dev/null sh install.sh --source --dest "$smoke_tmp/tui-cfg" >/dev/null 2>&1
+  printf ' \r' | script -qec "sh install.sh --source --dest \"$smoke_tmp/tui-cfg\"" /dev/null >/dev/null 2>&1
   [ -f "$smoke_tmp/tui-cfg/agent-packs.opencode.manifest" ] \
     || { echo "FAIL: TUI space+enter did not install the selected (first) pack" >&2; exit 1; }
   echo "ok: TUI toggle+confirm installs the selected pack"
   rc=0
-  printf 'q' | script -q /dev/null sh install.sh --source --dest "$smoke_tmp/tui-abort" >/dev/null 2>&1 || rc=$?
+  printf 'q' | script -qec "sh install.sh --source --dest \"$smoke_tmp/tui-abort\"" /dev/null >/dev/null 2>&1 || rc=$?
   [ "$rc" = "2" ] || { echo "FAIL: TUI q-abort should exit 2 (got $rc)" >&2; exit 1; }
   [ ! -e "$smoke_tmp/tui-abort/agent-packs.opencode.manifest" ] \
     || { echo "FAIL: TUI q-abort must not install anything" >&2; exit 1; }
@@ -255,9 +255,7 @@ fi
 echo "ok: pack@version rejected in --source mode"
 if command -v script >/dev/null 2>&1; then
   # TUI in release mode: left-arrow cycles opencode @latest -> @v9.9.8, space toggles, enter
-  printf '\033[D \r' | script -q /dev/null env \
-    AGENT_PACKS_RELEASE_BASE="file://$e2e/rel" AGENT_PACKS_API="file://$e2e/api" \
-    sh install.sh --release --dest "$e2e/cfg-tui" >/dev/null 2>&1 || true
+  printf '\033[D \r' | script -qec "env AGENT_PACKS_RELEASE_BASE=\"file://$e2e/rel\" AGENT_PACKS_API=\"file://$e2e/api\" sh install.sh --release --dest \"$e2e/cfg-tui\"" /dev/null >/dev/null 2>&1 || true
   [ "$(cat "$e2e/cfg-tui/agent-packs.opencode.version" 2>/dev/null)" = "v2.1.1" ] \
     || { echo "FAIL: TUI version cycling did not pin opencode to the v9.9.8 release (version file: $(cat "$e2e/cfg-tui/agent-packs.opencode.version" 2>/dev/null))" >&2; exit 1; }
   echo "ok: TUI left/right cycles the pack version across manifest history (installed v2.1.1 from v9.9.8)"
