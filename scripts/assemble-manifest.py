@@ -62,6 +62,15 @@ def main() -> int:
             print(f"FAIL: changed pack {name!r} is not a known pack", file=sys.stderr)
             return 1
 
+    for name, e in packs.items():
+        asset = e.get("asset", "")
+        # GitHub release upload keeps only the basename of each uploaded file, so the
+        # manifest's asset must be a bare filename — "packs/x.tar.gz" would 404.
+        if "/" in asset or asset != f"{name}.tar.gz":
+            print(f"FAIL: {name}: asset must be the bare filename {name}.tar.gz, got {asset!r}",
+                  file=sys.stderr)
+            return 1
+
     manifest = {"schema": 1, "release": args.release, "packs": packs}
     with open(args.out, "w", encoding="utf-8") as f:
         # ensure_ascii=False keeps descriptions readable (the installer's awk parser

@@ -26,8 +26,8 @@ plugin, both including the agent-scripts unit suite).
   need both; the installer hard-fails with a clear message otherwise. Optional tools (a
   forge CLI `gh`/`glab`/`forgejo-cli`, `shellcheck`) only produce a warning when absent.
 - **Release assets convention:** each GitHub release carries a `manifest.json` (per-pack
-  `version`/`description`/`asset`/`sha256`) plus one `packs/<name>.tar.gz` per pack; this
-  pack ships as `packs/open-driver.tar.gz` (top-level `open-driver/` with `pack.conf` +
+  `version`/`description`/`asset`/`sha256`) plus one `<name>.tar.gz` per pack; this
+  pack ships as `open-driver.tar.gz` (top-level `open-driver/` with `pack.conf` +
   `install.sh` + vendored `install-lib.sh` + payload dirs, minus repo-only `scripts/`,
   `docs/`, `README.md`, `AGENTS.md`). The installer fetches the manifest unauthenticated
   from `releases/latest/download/` (the repo is public). **Releases are cut automatically
@@ -48,7 +48,7 @@ plugin, both including the agent-scripts unit suite).
   `scripts/validate.sh` regression-tests the exclusion by planting a synthetic `.agent/`
   fixture (in `agents/` and in `skills/driver-conventions/`), running `install.sh --source`
   into a temp dir, and asserting it is not installed; the release workflow's self-test
-  greps the downloaded `packs/open-driver.tar.gz` for repo-only paths. Re-running the installer
+  greps the downloaded `open-driver.tar.gz` for repo-only paths. Re-running the installer
   also cleans previously installed copies via the manifest stale-file loop.
 - Install is **copy-based on purpose** (`cp -RL`): do NOT symlink these dirs into
   `~/.config/opencode/` or `.opencode/` — OpenCode's discovery skips symlinked agent files
@@ -185,7 +185,7 @@ the OpenCode binary.
   this pack is re-released when its payload changes (or on any infra change). The pack's
   own `scripts/release.sh` (thin wrapper over `ap_release_pack` in
   `scripts/release-lib.sh`) computes this pack's version from conventional commits since
-  the last tag and builds `packs/open-driver.tar.gz` + its manifest entry.
+  the last tag and builds `open-driver.tar.gz` + its manifest entry.
 - `workflow_dispatch` remains for manual re-runs with an optional `version` input
   (release-cursor tag only; per-pack versions live in `manifest.json`).
 - The pipeline: root `./scripts/validate.sh` → `scripts/release-detect.sh` → per changed

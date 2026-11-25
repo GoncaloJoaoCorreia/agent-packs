@@ -134,7 +134,7 @@ jobs:
               if name in changed or name not in prev:
                   continue
               asset = prev[name]["asset"]
-              dest = os.path.join(out_dir, asset)
+              dest = os.path.join(out_dir, "packs", asset)
               os.makedirs(os.path.dirname(dest), exist_ok=True)
               print(f"carrying over {name} {prev[name]['version']} ({asset}) from {os.environ['PREV_TAG']}")
               urllib.request.urlretrieve(f"{base}/{asset}", dest)
@@ -249,7 +249,7 @@ jobs:
           # self-test installs via releases/latest, so let the pointer settle first
           sleep 20
           t=$(mktemp -d)
-          gh release download "$tag" --dir "$t" --pattern 'manifest.json' --pattern 'packs/*.tar.gz'
+          gh release download "$tag" --dir "$t" --pattern 'manifest.json' --pattern '*.tar.gz'
           # manifest sanity: schema, release tag, one entry per pack with all fields
           python3 - "$t/manifest.json" "$tag" <<'PY'
           import json, sys
@@ -260,7 +260,7 @@ jobs:
           for name, e in manifest["packs"].items():
               for k in ("version", "description", "asset", "sha256"):
                   assert e.get(k), f"{name}: missing {k}"
-              assert e["asset"] == f"packs/{name}.tar.gz", e
+              assert e["asset"] == f"{name}.tar.gz", e
           print(f"ok: manifest schema=1 release={tag} packs={sorted(manifest['packs'])}")
           PY
           # every tarball's sha256 matches its manifest entry
@@ -274,7 +274,7 @@ jobs:
           print("ok: all tarball checksums match the manifest")
           PY
           # payload hygiene: no repo-only paths, and the pack installer + vendored lib ship
-          for tb in "$t"/packs/*.tar.gz; do
+          for tb in "$t"/*.tar.gz; do
             name=$(basename "$tb" .tar.gz)
             if tar -tzf "$tb" | grep -Eq "(^|/)${name}/(scripts|docs)/|(^|/)${name}/(README|AGENTS)\.md|(^|/)plugins/[^/]+/test/|node_modules|(^|/)(\.agent|__pycache__)/"; then
               echo "FAIL: $name tarball carries repo-only paths:" >&2

@@ -40,7 +40,7 @@ curl -fsSL https://raw.githubusercontent.com/GoncaloJoaoCorreia/agent-packs/main
 The installer fetches the latest release's `manifest.json`, lists the available packs with
 their versions in a checkbox TUI (or `--plain` numbered prompt), and asks which to install
 (multiple selectable; pass pack names / `all` explicitly to skip the prompt — see `--list`;
-no TTY + no args exits with an error). It downloads this pack's `packs/open-driver.tar.gz`,
+no TTY + no args exits with an error). It downloads this pack's `open-driver.tar.gz`,
 verifies its sha256 against the manifest, and installs this pack's payload —
 `agents/`, `commands/`, `plugins/`, `agent-scripts/`, `skills/` —
 into `~/.config/opencode/` (or `$XDG_CONFIG_HOME/opencode`). OpenCode reloads config

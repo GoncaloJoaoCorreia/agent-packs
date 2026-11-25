@@ -44,7 +44,7 @@ In a local checkout of this repo, run `./install.sh` instead — it installs str
 source (same copy-based install; nothing is built). Re-run it after pulling changes.
 
 Each GitHub release carries a `manifest.json` (per-pack `version`, `description`, `asset`,
-`sha256`) plus one `packs/<name>.tar.gz` per pack; the installer fetches the manifest from
+`sha256`) plus one `<name>.tar.gz` per pack; the installer fetches the manifest from
 `releases/latest/download/`, downloads the selected packs' tarballs, verifies each sha256
 against the manifest, and installs only the packs you selected. Installs are copy-based and
 write a per-pack `<prefix>.version` + `<prefix>.manifest` into the config dir, which drives
