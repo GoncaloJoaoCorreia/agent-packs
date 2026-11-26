@@ -34,9 +34,10 @@ orchestrator. Repo structure, contracts, and agent-facing guidance live in
   (e.g. `curl ... | sh`) — latest GitHub release, manifest-driven, sha256-verified.
   `--source` / `--release` force a mode.
 - Packs are selected as `PACK[@VERSION] ...` or `all`; given on the command line, the
-  installer never prompts. With a TTY and no pack args, an ANSI checkbox TUI opens over
-  `/dev/tty` (arrows move, space toggles, left/right cycles the highlighted pack's
-  version, enter confirms, q quits); `--plain` forces the numbered prompt. No TTY + no
+  installer never prompts. With a TTY and no pack args, an interactive picker TUI opens
+  over `/dev/tty` (modern terminal: UTF-8 glyphs, 256 colors, alternate screen; arrows
+  move, space toggles, left/right cycles the highlighted pack's version, enter confirms,
+  q quits); `--plain` forces the numbered prompt. No TTY + no
   pack args → exit 2 (never picks a default silently). `--list` prints the packs with
   versions, `--dest DIR` targets a single pack, `--no-plugin` skips every pack's
   `plugins/` payload.

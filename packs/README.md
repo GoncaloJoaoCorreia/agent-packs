@@ -57,9 +57,10 @@ from its own `pack.conf`. Optional hooks it defines:
   vendored copy inside the pack tarball in release mode). It ends with a per-pack
   OK/FAILED summary (name, resolved version, dest) and exits non-zero if any pack failed.
 - CLI: `install.sh [PACK[@VERSION] ...] [--source|--release] [--dest DIR] [--no-plugin]
-  [--plain] [--list]`. PACK args never prompt. No args + TTY → ANSI checkbox TUI over
-  `/dev/tty` (arrows navigate, space toggles, left/right cycles the pack's version across
-  the release manifest history, enter confirms, q aborts); `--plain` forces the numbered
+  [--plain] [--list]`. PACK args never prompt. No args + TTY → interactive picker TUI over
+  `/dev/tty` (modern terminal: UTF-8 glyphs, 256 colors, alternate screen; arrows
+  navigate, space toggles, left/right cycles the pack's version across the release
+  manifest history, enter confirms, q aborts); `--plain` forces the numbered
   multi-select prompt. No TTY + no args → exit 2 with a clear message (no silent default).
   `--list` prints the packs with their versions. `--dest DIR` requires a single pack.
 - Installs are **copy-based** (`cp -RL`) — never symlink payload dirs into a config dir.

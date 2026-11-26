@@ -56,8 +56,9 @@ scripts/
   target of a single pack (each pack otherwise uses its `PACK_DEFAULT_DEST`),
   `--no-plugin` skips every pack's `plugins/` payload dir, `--list` prints the packs with
   versions, `--plain` forces the numbered prompt. With no pack argument on a TTY the
-  installer opens an ANSI checkbox TUI (reads `/dev/tty`, so it works with `curl | sh`;
-  arrows navigate, space toggles, left/right cycles the pack's version, enter confirms);
+  installer opens an interactive picker TUI (reads `/dev/tty`, so it works with
+  `curl | sh`; modern terminal: UTF-8 glyphs, 256 colors, alternate screen — arrows
+  navigate, space toggles, left/right cycles the pack's version, enter confirms);
   without a TTY and without pack args it **exits 2** (never picks a default silently).
   OpenCode reloads config automatically, no restart. **Re-run `./install.sh` after every
   edit here.**
