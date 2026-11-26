@@ -3,7 +3,7 @@
 [![test](https://github.com/GoncaloJoaoCorreia/agent-packs/actions/workflows/test.yml/badge.svg)](https://github.com/GoncaloJoaoCorreia/agent-packs/actions/workflows/test.yml)
 [![build](https://github.com/GoncaloJoaoCorreia/agent-packs/actions/workflows/release.yml/badge.svg)](https://github.com/GoncaloJoaoCorreia/agent-packs/actions/workflows/release.yml)
 [![release](https://img.shields.io/github/release/GoncaloJoaoCorreia/agent-packs?display_name=tag)](https://github.com/GoncaloJoaoCorreia/agent-packs/releases/latest)
-[![license](https://img.shields.io/badge/license-Unlicense-blue)](LICENSE)
+[![license](https://img.shields.io/badge/license-Unlicense-blue)](../../UNLICENSE)
 
 The **open-driver** pack of [agent-packs](../../README.md) — a library of
 [OpenCode v2](https://opencode.ai/v2/docs/) agents, commands, skills — and one TUI plugin.
