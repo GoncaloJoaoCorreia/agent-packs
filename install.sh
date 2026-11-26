@@ -18,8 +18,9 @@
 #
 #   PACK ...    packs to install, by name, optionally pinned as PACK@<version> (release
 #               mode only), or "all". Given on the command line, never prompts.
-#               With no PACK args and a TTY, an ANSI checkbox TUI opens (reads /dev/tty,
-#               so it works with `curl ... | sh`); --plain forces the numbered prompt.
+#               With no PACK args and a TTY, an interactive picker TUI opens (reads
+#               /dev/tty, so it works with `curl ... | sh`; modern terminal: UTF-8,
+#               256 colors, alternate screen); --plain forces the numbered prompt.
 #               No TTY + no PACK args -> exit 2 (no silent default pack).
 #   --list      list the available packs (with versions in release mode) and exit
 #   --plain     force the numbered multi-select prompt instead of the TUI
@@ -67,8 +68,9 @@ Usage: install.sh [PACK[@VERSION] ...] [--source|--release] [--dest DIR] [--no-p
 
   PACK ...    pack names to install, optionally pinned as PACK@<version> (release mode
               only), or "all". Given on the command line, never prompts. With no PACK
-              args and a TTY, an ANSI checkbox TUI opens (reads /dev/tty, so it works
-              with \`curl ... | sh\`). No TTY + no PACK args -> exit 2.
+              args and a TTY, an interactive picker TUI opens (reads /dev/tty, so it
+              works with \`curl ... | sh\`; modern terminal: UTF-8 + 256 colors).
+              No TTY + no PACK args -> exit 2.
   --list      list available packs (with versions in release mode) and exit
   --plain     force the numbered multi-select prompt instead of the TUI
   --source    install from the local checkout this script lives in (auto-detected
@@ -98,11 +100,19 @@ while [ $# -gt 0 ]; do
   shift
 done
 
-# single exit trap: restore the TTY if the TUI put it in raw mode, clean the release tmpdir
-cleanup() {
+# tui_leave — restore the terminal (cursor visible + main screen + original stty)
+tui_leave() {
+  printf '\033[?25h\033[?1049l' > /dev/tty 2>/dev/null || true
   if [ -n "${TUI_OLD:-}" ]; then
     stty "$TUI_OLD" < /dev/tty 2>/dev/null || true
     TUI_OLD=""
+  fi
+}
+
+# single exit trap: restore the TTY if the TUI put it in raw mode / alt screen, clean the release tmpdir
+cleanup() {
+  if [ -n "${TUI_OLD:-}" ]; then
+    tui_leave
   fi
   if [ -n "${TMP:-}" ]; then
     rm -rf "$TMP"
@@ -349,7 +359,7 @@ select_packs_interactive() {
 
 # ---- interactive selection ------------------------------------------------------
 # Non-interactive contract: PACK args never prompt. No args + no TTY -> exit 2.
-# With a TTY: ANSI checkbox TUI (unless --plain or stty is broken -> numbered prompt).
+# With a TTY: interactive picker TUI (unless --plain or stty is broken -> numbered prompt).
 
 # list_release_tags — release tags, newest first, one paginated API call (cap 100)
 list_release_tags() {
@@ -427,8 +437,39 @@ ver_label() {
   fi
 }
 
-# tui_render — redraw the styled, column-aligned checkbox list to /dev/tty
+# tui_trunc <text> <cols> — truncate to <cols> display columns without splitting a
+# UTF-8 glyph. LC_ALL=C awk is byte-wise; every multibyte glyph is counted as 2
+# columns (conservative for terminals that render ambiguous-width chars wide), so
+# the result never exceeds <cols> even there. Appends an ellipsis (2 cols) when cut.
+tui_trunc() {
+  printf '%s' "$1" | LC_ALL=C awk -v w="$2" '{
+    s = $0; out = ""; cols = 0
+    for (i = 1; i <= length(s); i++) {
+      c = substr(s, i, 1)
+      if (c ~ /^[\200-\277]$/) { out = out c; continue }
+      gw = (c >= "\200") ? 2 : 1
+      if (cols + gw > w - 2) break
+      out = out c; cols += gw
+    }
+    if (i <= length(s)) out = out "\342\200\246"
+    printf "%s", out
+  }'
+}
+
+# tui_render — redraw the pack picker to /dev/tty. Only width-safe ANSI is used for
+# layout: every structural glyph is ASCII (so it is exactly 1 cell in every terminal)
+# and every printed line is truncated to the terminal width (tui_trunc counts multibyte
+# glyphs as 2 cols, conservative for ambiguous-wide terminals) — so rows can never
+# wrap and columns can never misalign. 256-color/bold is used purely for styling.
+# Redraw is flicker-free: home + EL per line + ED below, no full-screen clear.
+# Lines end in CRLF explicitly: the picker runs with the tty in raw mode, where
+# OPOST/ONLCR may be off (BSD stty) and a bare LF would not return to column 0.
 tui_render() {
+  _tr_sz=$(stty size < /dev/tty 2>/dev/null) || _tr_sz=""
+  _tr_cols=${_tr_sz#* }
+  case $_tr_cols in ''|*[!0-9]*|0) _tr_cols=80 ;; esac
+  [ "$_tr_cols" -lt 40 ] && _tr_cols=40
+  # pass 1: per-pack version labels + column widths, so every row lines up
   _tr_labels=""
   _tr_nw=0
   _tr_vw=0
@@ -440,45 +481,54 @@ tui_render() {
     _tr_n=${#p};  [ "$_tr_n" -gt "$_tr_nw" ] && _tr_nw=$_tr_n
     _tr_v=${#_tr_l}; [ "$_tr_v" -gt "$_tr_vw" ] && _tr_vw=$_tr_v
   done
-  _tr_esc=$(printf '\033')
   _tr_nsel=0
   # shellcheck disable=SC2086  # $SEL is an intentional word list
   for s in $SEL; do _tr_nsel=$((_tr_nsel + 1)); done
+  # description budget: "  " + ">" + " " + "[x]" + " " + name + " " + version + " - "
+  if [ "$_tr_vw" -gt 0 ]; then _tr_pre=$(( _tr_nw + _tr_vw + 12 )); else _tr_pre=$(( _tr_nw + 11 )); fi
+  _tr_dw=$(( _tr_cols - _tr_pre - 1 ))
+  [ "$_tr_dw" -lt 12 ] && _tr_dw=12
   {
-    printf '\033[H\033[2J'
-    printf '\033[1m\033[36magent-packs installer\033[0m — select packs to install\n'
-    printf '\033[2m  up/down: move   space: toggle   left/right: cycle version   enter: install   q: quit\033[0m\n\n'
+    printf '\033[H'
+    printf '  \033[1m\033[38;5;81magent-packs\033[0m \033[1minstaller\033[0m \033[2m- select packs to install\033[0m\033[K\r\n'
+    printf '  \033[2m%s\033[0m\033[K\r\n' "$(LC_ALL=C awk -v w=$((_tr_cols - 3)) 'BEGIN{ for (i = 0; i < w; i++) printf "-" }')"
+    if [ -n "${TAGS:-}" ]; then
+      _tr_help='up/down: move   space: toggle   left/right: version   enter: install   q: quit'
+    else
+      _tr_help='up/down: move   space: toggle   enter: install   q: quit'
+    fi
+    printf '  \033[2m%s\033[0m\033[K\r\n\033[K\r\n' "$(tui_trunc "$_tr_help" $((_tr_cols - 3)))"
     _tr_i=0
     # shellcheck disable=SC2086  # $ALL_PACKS is an intentional word list
     for p in $ALL_PACKS; do
       _tr_i=$((_tr_i + 1))
       _tr_l=$(printf '%s\n' "$_tr_labels" | awk -v n="$_tr_i" 'NR==n')
-      if sel_has "$p"; then
-        _tr_mark=$(printf '\033[32m[x]\033[0m')
-      else
-        _tr_mark=$(printf '\033[90m[ ]\033[0m')
-      fi
-      _tr_desc=$(pack_description "$p")
-      if [ "$_tr_vw" -gt 0 ]; then
-        _tr_line=$(printf '  %s \033[1m%-*s\033[0m \033[33m%-*s\033[0m — %s' \
-          "$_tr_mark" "$_tr_nw" "$p" "$_tr_vw" "$_tr_l" "$_tr_desc")
-      else
-        _tr_line=$(printf '  %s \033[1m%-*s\033[0m — %s' \
-          "$_tr_mark" "$_tr_nw" "$p" "$_tr_desc")
-      fi
       if [ "$_tr_i" = "$CURSOR" ]; then
-        _tr_line=$(printf '%s' "$_tr_line" | sed "s/${_tr_esc}\\[[0-9;]*m//g")
-        printf '\033[7m%s\033[0m\n' "$_tr_line"
+        _tr_cur=$(printf '\033[1m\033[38;5;204m>\033[0m')
       else
-        printf '%s\n' "$_tr_line"
+        _tr_cur=' '
+      fi
+      if sel_has "$p"; then
+        _tr_box=$(printf '\033[38;5;42m[x]\033[0m')
+      else
+        _tr_box=$(printf '\033[38;5;245m[ ]\033[0m')
+      fi
+      _tr_desc=$(tui_trunc "$(pack_description "$p")" "$_tr_dw")
+      if [ "$_tr_vw" -gt 0 ]; then
+        printf '  %s %s \033[1m%-*s\033[0m \033[38;5;229m%-*s\033[0m - %s\033[K\r\n' \
+          "$_tr_cur" "$_tr_box" "$_tr_nw" "$p" "$_tr_vw" "$_tr_l" "$_tr_desc"
+      else
+        printf '  %s %s \033[1m%-*s\033[0m - %s\033[K\r\n' \
+          "$_tr_cur" "$_tr_box" "$_tr_nw" "$p" "$_tr_desc"
       fi
     done
-    printf '\n'
+    printf '\033[K\r\n'
     if [ -n "${TUI_ERR:-}" ]; then
-      printf '\033[1m\033[31m%s\033[0m\n' "$TUI_ERR"
+      printf '  \033[1m\033[38;5;203m%s\033[0m\033[K\r\n' "$TUI_ERR"
     else
-      printf '\033[2m%d selected — enter to install\033[0m\n' "$_tr_nsel"
+      printf '  \033[2m%d selected - enter to install\033[0m\033[K\r\n' "$_tr_nsel"
     fi
+    printf '\033[J'
   } > /dev/tty
 }
 
@@ -487,7 +537,8 @@ read_key() {
   dd bs=1 count=1 < /dev/tty 2>/dev/null | od -An -tx1 | tr -d ' \n'
 }
 
-# tui_picker — pure-sh ANSI checkbox TUI over /dev/tty (zero external deps).
+# tui_picker — pure-sh picker TUI over /dev/tty (zero external deps; modern-terminal
+# ANSI: UTF-8 glyphs, 256 colors, alternate screen + hidden cursor while active).
 # Sets PACKS to the confirmed "name[@tag] ..." selection and returns 0.
 tui_picker() {
   TUI_OLD=$(stty -g < /dev/tty 2>/dev/null) || return 1
@@ -496,6 +547,7 @@ tui_picker() {
     TUI_OLD=""
     return 1
   fi
+  printf '\033[?1049h\033[?25l' > /dev/tty 2>/dev/null || true
   if [ "$MODE" = "release" ]; then
     TAGS=$(list_release_tags) || TAGS=""
   else
@@ -512,15 +564,16 @@ tui_picker() {
   while :; do
     hex=$(read_key)
     if [ -z "$hex" ]; then
+      tui_leave
       echo "install.sh: TTY closed — aborting" >&2
       exit 2
     fi
     case "$hex" in
-      03) echo "install.sh: aborted (Ctrl-C)" >&2; exit 2 ;;
-      71) echo "install.sh: aborted" >&2; exit 2 ;;          # q
+      03) tui_leave; echo "install.sh: aborted (Ctrl-C)" >&2; exit 2 ;;
+      71) tui_leave; echo "install.sh: aborted" >&2; exit 2 ;;          # q
       0d|0a)                                                    # enter
         if [ -z "$SEL" ]; then
-          TUI_ERR="no packs selected — space toggles a pack"
+          TUI_ERR="no packs selected - space toggles a pack"
           tui_render
           continue
         fi
@@ -530,6 +583,7 @@ tui_picker() {
           _tp_tag=$(pver_of "$p")
           if [ -n "$_tp_tag" ]; then PACKS="$PACKS $p@$_tp_tag"; else PACKS="$PACKS $p"; fi
         done
+        tui_leave
         return 0
         ;;
       20)                                                       # space

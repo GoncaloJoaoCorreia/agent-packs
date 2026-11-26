@@ -22,9 +22,11 @@ A personal library of agent-harness extensions — **packs**. Each pack under
 curl -fsSL https://raw.githubusercontent.com/GoncaloJoaoCorreia/agent-packs/main/install.sh | sh
 ```
 
-The installer opens a checkbox TUI listing the available packs and their versions — up/down
-moves, space toggles, left/right cycles the highlighted pack's version, enter installs, q
-quits. To skip the prompt:
+The installer opens an interactive pack picker (needs a modern terminal: UTF-8, 256
+colors, alternate screen) listing the available packs and their versions — up/down moves,
+space toggles, left/right cycles the highlighted pack's version (release mode only),
+enter installs, q quits.
+On a basic terminal use `--plain` for a numbered prompt. To skip the prompt entirely:
 
 ```sh
 sh -s -- open-driver          # one pack, latest release, non-interactive
