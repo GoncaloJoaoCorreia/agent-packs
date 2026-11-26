@@ -427,26 +427,57 @@ ver_label() {
   fi
 }
 
-# tui_render — redraw the checkbox list to /dev/tty
+# tui_render — redraw the styled, column-aligned checkbox list to /dev/tty
 tui_render() {
+  _tr_labels=""
+  _tr_nw=0
+  _tr_vw=0
+  # shellcheck disable=SC2086  # $ALL_PACKS is an intentional word list
+  for p in $ALL_PACKS; do
+    _tr_l=$(ver_label "$p")
+    _tr_labels="$_tr_labels$_tr_l
+"
+    _tr_n=${#p};  [ "$_tr_n" -gt "$_tr_nw" ] && _tr_nw=$_tr_n
+    _tr_v=${#_tr_l}; [ "$_tr_v" -gt "$_tr_vw" ] && _tr_vw=$_tr_v
+  done
+  _tr_esc=$(printf '\033')
+  _tr_nsel=0
+  # shellcheck disable=SC2086  # $SEL is an intentional word list
+  for s in $SEL; do _tr_nsel=$((_tr_nsel + 1)); done
   {
     printf '\033[H\033[2J'
-    printf 'agent-packs installer — select packs to install\n'
-    printf '  up/down: move   space: toggle   left/right: cycle version   enter: install   q: quit\n\n'
+    printf '\033[1m\033[36magent-packs installer\033[0m — select packs to install\n'
+    printf '\033[2m  up/down: move   space: toggle   left/right: cycle version   enter: install   q: quit\033[0m\n\n'
     _tr_i=0
     # shellcheck disable=SC2086  # $ALL_PACKS is an intentional word list
     for p in $ALL_PACKS; do
       _tr_i=$((_tr_i + 1))
-      if sel_has "$p"; then _tr_mark='[x]'; else _tr_mark='[ ]'; fi
-      _tr_line="  $_tr_mark $p $(ver_label "$p") — $(pack_description "$p")"
+      _tr_l=$(printf '%s\n' "$_tr_labels" | awk -v n="$_tr_i" 'NR==n')
+      if sel_has "$p"; then
+        _tr_mark=$(printf '\033[32m[x]\033[0m')
+      else
+        _tr_mark=$(printf '\033[90m[ ]\033[0m')
+      fi
+      _tr_desc=$(pack_description "$p")
+      if [ "$_tr_vw" -gt 0 ]; then
+        _tr_line=$(printf '  %s \033[1m%-*s\033[0m \033[33m%-*s\033[0m — %s' \
+          "$_tr_mark" "$_tr_nw" "$p" "$_tr_vw" "$_tr_l" "$_tr_desc")
+      else
+        _tr_line=$(printf '  %s \033[1m%-*s\033[0m — %s' \
+          "$_tr_mark" "$_tr_nw" "$p" "$_tr_desc")
+      fi
       if [ "$_tr_i" = "$CURSOR" ]; then
+        _tr_line=$(printf '%s' "$_tr_line" | sed "s/${_tr_esc}\\[[0-9;]*m//g")
         printf '\033[7m%s\033[0m\n' "$_tr_line"
       else
         printf '%s\n' "$_tr_line"
       fi
     done
+    printf '\n'
     if [ -n "${TUI_ERR:-}" ]; then
-      printf '\033[31m%s\033[0m\n' "$TUI_ERR"
+      printf '\033[1m\033[31m%s\033[0m\n' "$TUI_ERR"
+    else
+      printf '\033[2m%d selected — enter to install\033[0m\n' "$_tr_nsel"
     fi
   } > /dev/tty
 }
@@ -510,8 +541,8 @@ tui_picker() {
       1b)                                                       # ESC sequence (arrows)
         h2=$(read_key); h3=$(read_key)
         case "$h2$h3" in
-          5b41|4f41) CURSOR=$(( CURSOR - 1 )); [ "$CURSOR" -lt 1 ] && CURSOR=$NPACKS ;;       # up
-          5b42|4f42) CURSOR=$(( CURSOR + 1 )); [ "$CURSOR" -gt "$NPACKS" ] && CURSOR=1 ;;      # down
+          5b41|4f41) CURSOR=$(( CURSOR - 1 )); [ "$CURSOR" -lt 1 ] && CURSOR=$NPACKS; _tc=0 ;;  # up
+          5b42|4f42) CURSOR=$(( CURSOR + 1 )); [ "$CURSOR" -gt "$NPACKS" ] && CURSOR=1; _tc=0 ;; # down
           5b43|4f43) _tc=1 ;;                                                                   # right
           5b44|4f44) _tc=-1 ;;                                                                  # left
           *) _tc=0 ;;

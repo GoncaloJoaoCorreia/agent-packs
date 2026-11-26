@@ -12,6 +12,8 @@ a repository of Mistral Vibe skills (Agent Skills `SKILL.md`) installed into
 There is no build or lint at the repo level; each pack may carry its own validation under
 `packs/<name>/scripts/` (the root `scripts/validate.sh` dispatcher runs all of them).
 Tests + validation run in CI on every PR (`.github/workflows/test.yml`).
+Human contributors: see [CONTRIBUTING.md](CONTRIBUTING.md) for the PR workflow, local
+validation, and the release process.
 
 ## Layout
 
