@@ -78,6 +78,8 @@ only changes explicitly stated in the user's invocation prompt:
   Removed / Fixed / Security categories.
 - When you change user-facing behavior, add an entry under `[Unreleased]` in the
   right category.
+- Entries are heavily summarized: 10 words max each — a short phrase, not a
+  sentence.
 
 ### Tests
 
